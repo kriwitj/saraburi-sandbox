@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
 
 app.use(cors());
 app.use(express.json());
@@ -432,6 +432,39 @@ app.get('/api/v1/summary', (req, res) => {
   });
 });
 
+// Authentication Endpoints
+app.post('/api/v1/auth/login', (req, res) => {
+  const { username, password } = req.body;
+  if (username === 'admin' && password === 'password') {
+    return res.json({
+      token: 'mock-jwt-token-12345',
+      user: {
+        id: 1,
+        username: 'admin',
+        name: 'ผู้ดูแลระบบ สระบุรีแซนด์บ็อกซ์',
+        role: 'administrator',
+        provider: 'local'
+      }
+    });
+  }
+  return res.status(401).json({ error: 'ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง' });
+});
+
+app.post('/api/v1/auth/keycloak-sso', (req, res) => {
+  // Mocking keycloak SSO token verification and profile extraction in backend
+  return res.json({
+    token: 'mock-keycloak-jwt-token-sso',
+    user: {
+      id: 2,
+      username: 'keycloak-admin',
+      name: 'Keycloak SSO Admin',
+      email: 'sso.admin@saraburi.go.th',
+      role: 'administrator',
+      provider: 'keycloak'
+    }
+  });
+});
+
 // Project Management Endpoints
 app.get('/api/v1/projects', (req, res) => {
   res.json(projects);
@@ -463,6 +496,26 @@ app.post('/api/v1/projects', (req, res) => {
   res.status(201).json(newProject);
 });
 
+app.put('/api/v1/projects/:id', (req, res) => {
+  const id = Number(req.params.id);
+  const idx = projects.findIndex(p => p.id === id);
+  if (idx !== -1) {
+    projects[idx] = { ...projects[idx], ...req.body, id };
+    return res.json(projects[idx]);
+  }
+  res.status(404).json({ error: 'Project not found' });
+});
+
+app.delete('/api/v1/projects/:id', (req, res) => {
+  const id = Number(req.params.id);
+  const idx = projects.findIndex(p => p.id === id);
+  if (idx !== -1) {
+    const deleted = projects.splice(idx, 1);
+    return res.json(deleted[0]);
+  }
+  res.status(404).json({ error: 'Project not found' });
+});
+
 // CMS Blog Endpoints
 app.get('/api/v1/cms', (req, res) => {
   res.json(cmsArticles);
@@ -490,6 +543,26 @@ app.post('/api/v1/cms', (req, res) => {
 
   cmsArticles.push(newArticle);
   res.status(201).json(newArticle);
+});
+
+app.put('/api/v1/cms/:id', (req, res) => {
+  const id = Number(req.params.id);
+  const idx = cmsArticles.findIndex(c => c.id === id);
+  if (idx !== -1) {
+    cmsArticles[idx] = { ...cmsArticles[idx], ...req.body, id };
+    return res.json(cmsArticles[idx]);
+  }
+  res.status(404).json({ error: 'Article not found' });
+});
+
+app.delete('/api/v1/cms/:id', (req, res) => {
+  const id = Number(req.params.id);
+  const idx = cmsArticles.findIndex(c => c.id === id);
+  if (idx !== -1) {
+    const deleted = cmsArticles.splice(idx, 1);
+    return res.json(deleted[0]);
+  }
+  res.status(404).json({ error: 'Article not found' });
 });
 
 // Activity Tracking Endpoints
@@ -526,6 +599,26 @@ app.post('/api/v1/activities', (req, res) => {
   proj.current_value = Math.min(proj.target_value, Number(proj.current_value) + Number(carbon_saved_co2e || 0) * 0.01); // Mocked progress step
   
   res.status(201).json(newActivity);
+});
+
+app.put('/api/v1/activities/:id', (req, res) => {
+  const id = Number(req.params.id);
+  const idx = activities.findIndex(a => a.id === id);
+  if (idx !== -1) {
+    activities[idx] = { ...activities[idx], ...req.body, id };
+    return res.json(activities[idx]);
+  }
+  res.status(404).json({ error: 'Activity not found' });
+});
+
+app.delete('/api/v1/activities/:id', (req, res) => {
+  const id = Number(req.params.id);
+  const idx = activities.findIndex(a => a.id === id);
+  if (idx !== -1) {
+    const deleted = activities.splice(idx, 1);
+    return res.json(deleted[0]);
+  }
+  res.status(404).json({ error: 'Activity not found' });
 });
 
 app.listen(PORT, () => {
