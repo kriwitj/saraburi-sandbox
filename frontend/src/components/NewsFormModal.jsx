@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   X, Image, Upload, Trash2, Star, Calendar, Sparkles, Check, 
   AlertCircle, Plus, FileText, ArrowRight, CornerDownRight,
-  GripVertical, Move, ChevronLeft, ChevronRight
+  GripVertical, Move, ChevronLeft, ChevronRight, Loader2
 } from 'lucide-react';
 import RichTextEditor from './RichTextEditor';
 
@@ -34,59 +34,42 @@ export default function NewsFormModal({
   });
 
   const [isProcessingFiles, setIsProcessingFiles] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0 });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitSuccess, setSubmitSuccess] = useState(false);
   const [draggedIdx, setDraggedIdx] = useState(null);
   const [dragOverIdx, setDragOverIdx] = useState(null);
 
-  // Bulletproof image processor: reads as Data URL with optional downscaling
+  // High-performance image processor: uses native createImageBitmap or HTML Image
+  // Compresses to maxDim 1000px, JPEG 0.72 (~40KB-70KB per photo)
+  // Ensures fast upload of 10+ photos and keeps total payload well under 1MB
   const processImageFile = (file) => {
     return new Promise((resolve) => {
-      // 1. Always use FileReader to read the file reliably first
-      const reader = new FileReader();
-      
-      reader.onerror = () => {
-        console.warn("FileReader error for file:", file.name);
+      if (!file) {
         resolve(null);
-      };
+        return;
+      }
 
-      reader.onload = (e) => {
-        const rawDataUrl = e.target.result;
-        if (!rawDataUrl || typeof rawDataUrl !== 'string') {
-          resolve(null);
-          return;
-        }
+      // Small GIF or SVG icons: return as data URL directly
+      if (file.type === 'image/svg+xml' || (file.type === 'image/gif' && file.size < 30 * 1024)) {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve(e.target.result);
+        reader.onerror = () => resolve(null);
+        reader.readAsDataURL(file);
+        return;
+      }
 
-        // For small files (< 300KB) or SVG/GIF, return immediately
-        if (file.size < 300 * 1024 || file.type === 'image/svg+xml' || file.type === 'image/gif') {
-          resolve(rawDataUrl);
-          return;
-        }
+      const maxDim = 1000;
+      const targetQuality = 0.72;
 
-        // For larger photos, attempt canvas compression to save storage with safety timeout
-        let settled = false;
-        const timer = setTimeout(() => {
-          if (!settled) {
-            settled = true;
-            resolve(rawDataUrl); // Fallback to raw data URL on timeout
-          }
-        }, 800);
-
-        try {
-          const img = new Image();
-          img.onload = () => {
-            if (settled) return;
-            clearTimeout(timer);
-            settled = true;
-
+      // Method 1: Off-main-thread hardware-accelerated decode via createImageBitmap
+      if (typeof window !== 'undefined' && typeof window.createImageBitmap === 'function') {
+        createImageBitmap(file)
+          .then((bitmap) => {
             try {
-              let width = img.naturalWidth || img.width;
-              let height = img.naturalHeight || img.height;
+              let width = bitmap.width;
+              let height = bitmap.height;
 
-              if (!width || !height) {
-                resolve(rawDataUrl);
-                return;
-              }
-
-              const maxDim = 1200;
               if (width > maxDim || height > maxDim) {
                 if (width > height) {
                   height = Math.round((height * maxDim) / width);
@@ -102,42 +85,115 @@ export default function NewsFormModal({
               canvas.height = height;
               const ctx = canvas.getContext('2d');
               if (!ctx) {
-                resolve(rawDataUrl);
+                bitmap.close();
+                fallbackWithFileReader(file, resolve, maxDim, targetQuality);
                 return;
               }
 
-              ctx.drawImage(img, 0, 0, width, height);
-              const compressed = canvas.toDataURL('image/jpeg', 0.8);
+              ctx.drawImage(bitmap, 0, 0, width, height);
+              const compressed = canvas.toDataURL('image/jpeg', targetQuality);
+              bitmap.close();
+
               if (compressed && compressed.length > 50) {
                 resolve(compressed);
               } else {
-                resolve(rawDataUrl);
+                fallbackWithFileReader(file, resolve, maxDim, targetQuality);
               }
             } catch (err) {
-              resolve(rawDataUrl);
+              try { bitmap.close(); } catch (e) {}
+              fallbackWithFileReader(file, resolve, maxDim, targetQuality);
             }
-          };
+          })
+          .catch(() => {
+            fallbackWithFileReader(file, resolve, maxDim, targetQuality);
+          });
+        return;
+      }
 
-          img.onerror = () => {
-            if (!settled) {
-              clearTimeout(timer);
-              settled = true;
+      // Method 2: Standard FileReader fallback
+      fallbackWithFileReader(file, resolve, maxDim, targetQuality);
+    });
+  };
+
+  const fallbackWithFileReader = (file, resolve, maxDim, targetQuality) => {
+    const reader = new FileReader();
+    reader.onerror = () => resolve(null);
+    reader.onload = (e) => {
+      const rawDataUrl = e.target.result;
+      if (!rawDataUrl || typeof rawDataUrl !== 'string') {
+        resolve(null);
+        return;
+      }
+
+      let settled = false;
+      const timer = setTimeout(() => {
+        if (!settled) {
+          settled = true;
+          resolve(rawDataUrl);
+        }
+      }, 5000);
+
+      try {
+        const img = new Image();
+        img.onload = () => {
+          if (settled) return;
+          clearTimeout(timer);
+          settled = true;
+
+          try {
+            let width = img.naturalWidth || img.width;
+            let height = img.naturalHeight || img.height;
+
+            if (!width || !height) {
               resolve(rawDataUrl);
+              return;
             }
-          };
 
-          img.src = rawDataUrl;
-        } catch (err) {
+            if (width > maxDim || height > maxDim) {
+              if (width > height) {
+                height = Math.round((height * maxDim) / width);
+                width = maxDim;
+              } else {
+                width = Math.round((width * maxDim) / height);
+                height = maxDim;
+              }
+            }
+
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) {
+              resolve(rawDataUrl);
+              return;
+            }
+
+            ctx.drawImage(img, 0, 0, width, height);
+            const compressed = canvas.toDataURL('image/jpeg', targetQuality);
+            resolve((compressed && compressed.length > 50) ? compressed : rawDataUrl);
+          } catch (err) {
+            resolve(rawDataUrl);
+          }
+        };
+
+        img.onerror = () => {
           if (!settled) {
             clearTimeout(timer);
             settled = true;
             resolve(rawDataUrl);
           }
-        }
-      };
+        };
 
-      reader.readAsDataURL(file);
-    });
+        img.src = rawDataUrl;
+      } catch (err) {
+        if (!settled) {
+          clearTimeout(timer);
+          settled = true;
+          resolve(rawDataUrl);
+        }
+      }
+    };
+    reader.readAsDataURL(file);
   };
 
   useEffect(() => {
@@ -183,13 +239,17 @@ export default function NewsFormModal({
     if (!files.length) return;
 
     setIsProcessingFiles(true);
+    setUploadProgress({ current: 0, total: files.length });
+
     try {
       const newImages = [];
-      for (const file of files) {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        setUploadProgress({ current: i + 1, total: files.length });
         const processedDataUrl = await processImageFile(file);
         if (processedDataUrl) {
           newImages.push({
-            id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            id: `${Date.now()}-${i}-${Math.random().toString(36).substr(2, 7)}`,
             url: processedDataUrl,
             caption: file.name.replace(/\.[^/.]+$/, "")
           });
@@ -210,6 +270,7 @@ export default function NewsFormModal({
       console.error("Error processing and compressing images:", err);
     } finally {
       setIsProcessingFiles(false);
+      setUploadProgress({ current: 0, total: 0 });
       if (e.target) e.target.value = '';
     }
   };
@@ -315,26 +376,54 @@ export default function NewsFormModal({
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.title || !formData.content) {
-      alert("กรุณากรอกหัวข้อข่าวและเนื้อหาข่าวให้ครบถ้วน");
+    if (isSubmitting) return;
+
+    if (isProcessingFiles) {
+      alert("กรุณารอระบบประมวลผลไฟล์ภาพให้เสร็จสิ้นก่อนกดบันทึก");
       return;
     }
 
-    const payload = {
-      ...(initialData?.id ? { id: initialData.id } : {}),
-      ...formData,
-      image_url: formData.image_url || (formData.gallery_images[0] ? (typeof formData.gallery_images[0] === 'string' ? formData.gallery_images[0] : formData.gallery_images[0].url) : 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=800&q=80')
-    };
+    if (!formData.title?.trim()) {
+      alert("กรุณาระบุหัวข้อข่าวสาร");
+      return;
+    }
 
-    onSubmit(payload);
+    if (!formData.content?.trim()) {
+      alert("กรุณาระบุเนื้อหาข่าวสารฉบับเต็ม");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const payload = {
+        ...(initialData?.id ? { id: initialData.id } : {}),
+        ...formData,
+        image_url: formData.image_url || (formData.gallery_images[0] ? (typeof formData.gallery_images[0] === 'string' ? formData.gallery_images[0] : formData.gallery_images[0].url) : 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=800&q=80')
+      };
+
+      await onSubmit(payload);
+      setSubmitSuccess(true);
+    } catch (err) {
+      console.error("Error submitting news article:", err);
+      alert("เกิดข้อผิดพลาดในการบันทึกข้อมูล กรุณาลองใหม่อีกครั้ง");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
-      <div className="bg-white border border-slate-200 rounded-3xl max-w-4xl w-full shadow-2xl overflow-hidden flex flex-col my-auto max-h-[90vh] animate-in fade-in zoom-in-95 duration-200">
+      <div className="bg-white border border-slate-200 rounded-3xl max-w-4xl w-full shadow-2xl overflow-hidden flex flex-col my-auto max-h-[90vh] animate-in fade-in zoom-in-95 duration-200 relative">
         
+        {/* Loading progress bar indicator at top of modal */}
+        {isSubmitting && (
+          <div className="absolute top-0 left-0 right-0 h-1 bg-emerald-100 overflow-hidden z-50">
+            <div className="h-full bg-emerald-600 animate-pulse w-full"></div>
+          </div>
+        )}
+
         {/* Modal Header */}
         <div className="bg-slate-50 border-b border-slate-200 px-6 py-4 flex items-center justify-between">
           <div>
@@ -349,7 +438,8 @@ export default function NewsFormModal({
           <button 
             type="button" 
             onClick={onClose} 
-            className="text-slate-400 hover:text-slate-700 p-2 rounded-full hover:bg-slate-200 transition"
+            disabled={isSubmitting}
+            className="text-slate-400 hover:text-slate-700 p-2 rounded-full hover:bg-slate-200 transition disabled:opacity-50"
           >
             <X className="w-5 h-5" />
           </button>
@@ -481,12 +571,29 @@ export default function NewsFormModal({
                 className="border-2 border-dashed border-emerald-300 hover:border-emerald-500 bg-emerald-50/40 hover:bg-emerald-50/80 rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer transition text-center space-y-1.5"
               >
                 <Upload className="w-6 h-6 text-emerald-600" />
-                <span className="font-bold text-xs text-emerald-800">
-                  {isProcessingFiles ? 'กำลังประมวลผลไฟล์ภาพ...' : 'คลิกเพื่อเลือกไฟล์ภาพหลายรูปพร้อมกัน'}
-                </span>
-                <span className="text-[10px] text-slate-500">
-                  รองรับ JPG, PNG, WEBP (เลือกได้หลายไฟล์หรือลากไฟล์มาวางที่นี่)
-                </span>
+                {isProcessingFiles ? (
+                  <div className="flex flex-col items-center gap-1.5 w-full max-w-xs py-1">
+                    <div className="flex items-center gap-1.5 text-emerald-800 font-bold text-xs">
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-600" />
+                      <span>กำลังบีบอัดและเตรียมรูปภาพ ({uploadProgress.current}/{uploadProgress.total} ภาพ)...</span>
+                    </div>
+                    <div className="w-full bg-emerald-200/60 rounded-full h-1.5 overflow-hidden">
+                      <div 
+                        className="bg-emerald-600 h-1.5 rounded-full transition-all duration-300"
+                        style={{ width: `${Math.round((uploadProgress.current / Math.max(1, uploadProgress.total)) * 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <span className="font-bold text-xs text-emerald-800">
+                      คลิกเพื่อเลือกไฟล์ภาพหลายรูปพร้อมกัน
+                    </span>
+                    <span className="text-[10px] text-slate-500">
+                      รองรับ JPG, PNG, WEBP (เลือกได้หลายไฟล์หรือลากไฟล์มาวางที่นี่)
+                    </span>
+                  </>
+                )}
                 <input 
                   id="cms-gallery-input"
                   type="file" 
@@ -494,7 +601,7 @@ export default function NewsFormModal({
                   accept="image/*" 
                   onChange={handleFilesUpload} 
                   className="sr-only" 
-                  disabled={isProcessingFiles}
+                  disabled={isProcessingFiles || isSubmitting}
                 />
               </label>
 
@@ -697,16 +804,45 @@ export default function NewsFormModal({
             <button
               type="button"
               onClick={onClose}
-              className="px-5 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-100 text-slate-600 font-bold transition text-xs"
+              disabled={isSubmitting}
+              className="px-5 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-100 text-slate-600 font-bold transition text-xs disabled:opacity-50"
             >
               ยกเลิก
             </button>
             <button
               type="submit"
-              className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold transition shadow-md flex items-center gap-1.5 text-xs"
+              disabled={isSubmitting || isProcessingFiles}
+              className={`px-6 py-2.5 rounded-xl font-bold transition shadow-md flex items-center gap-2 text-xs select-none ${
+                isSubmitting 
+                  ? 'bg-emerald-700 text-white cursor-wait opacity-90' 
+                  : isProcessingFiles 
+                    ? 'bg-emerald-400 text-white cursor-not-allowed'
+                    : submitSuccess
+                      ? 'bg-emerald-800 text-emerald-100'
+                      : 'bg-emerald-600 hover:bg-emerald-500 text-white active:scale-95'
+              }`}
             >
-              <Check className="w-4 h-4" />
-              <span>{isEdit ? 'บันทึกการแก้ไขบทความ' : 'เผยแพร่ข่าวสารสู่ระบบ'}</span>
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin text-white" />
+                  <span>กำลังบันทึกข้อมูลและรูปภาพ...</span>
+                </>
+              ) : isProcessingFiles ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin text-white" />
+                  <span>กำลังเตรียมไฟล์ภาพ ({uploadProgress.current}/{uploadProgress.total})...</span>
+                </>
+              ) : submitSuccess ? (
+                <>
+                  <Check className="w-4 h-4 text-emerald-200" />
+                  <span>บันทึกข้อมูลเรียบร้อยแล้ว!</span>
+                </>
+              ) : (
+                <>
+                  <Check className="w-4 h-4" />
+                  <span>{isEdit ? 'บันทึกการแก้ไขบทความ' : 'เผยแพร่ข่าวสารสู่ระบบ'}</span>
+                </>
+              )}
             </button>
           </div>
 

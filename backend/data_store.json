@@ -311,6 +311,91 @@
       "published_at": "2026-07-15T10:30:00.000Z",
       "created_at": "2026-07-15T10:30:00.000Z",
       "updated_at": "2026-07-15T10:30:00.000Z"
+    },
+    {
+      "id": 3,
+      "title": "ทดสอบการแก้ไขบทความ (Updated Title)",
+      "slug": "ทดสอบการสร้างบทความใหม่พร้อมคลังรูปภาพและ-rich-html",
+      "category": "News",
+      "summary": "บทคัดย่อสำหรับการทดสอบระบบ CMS",
+      "content": "<h3>หัวข้อทดสอบ</h3><p>เนื้อหาบทความทดสอบพร้อมกล่องแจ้งเตือน</p><blockquote>คำคมทดสอบ</blockquote>",
+      "image_url": "https://images.unsplash.com/photo-test-cover.jpg",
+      "gallery_images": [
+        "https://images.unsplash.com/photo-test-cover.jpg",
+        "https://images.unsplash.com/photo-test-2.jpg",
+        "https://images.unsplash.com/photo-test-3.jpg"
+      ],
+      "author": "แอดมินทดสอบ",
+      "is_published": true,
+      "published_at": "2026-09-16T09:00:00.000Z",
+      "created_at": "2026-09-16T07:59:15.717Z",
+      "updated_at": "2026-09-16T07:59:15.719Z"
+    },
+    {
+      "id": 4,
+      "title": "ทดสอบการสร้างบทความพร้อมรูปภาพ 10 ภาพ",
+      "slug": "ทดสอบการสร้างบทความพร้อมรูปภาพ-10-ภาพ",
+      "category": "Activity",
+      "summary": "ทดสอบการอัปโหลดรูปภาพมากกว่า 7 ภาพเพื่อป้องกันรูปหายหลัง refresh",
+      "content": "<p>ทดสอบบทความที่มีรูปภาพเกิน 7 รูป</p>",
+      "image_url": "https://images.unsplash.com/photo-1.jpg",
+      "gallery_images": [
+        {
+          "id": "img-1",
+          "url": "https://images.unsplash.com/photo-1.jpg",
+          "caption": "ภาพประกอบกิจกรรมที่ 1"
+        },
+        {
+          "id": "img-2",
+          "url": "https://images.unsplash.com/photo-2.jpg",
+          "caption": "ภาพประกอบกิจกรรมที่ 2"
+        },
+        {
+          "id": "img-3",
+          "url": "https://images.unsplash.com/photo-3.jpg",
+          "caption": "ภาพประกอบกิจกรรมที่ 3"
+        },
+        {
+          "id": "img-4",
+          "url": "https://images.unsplash.com/photo-4.jpg",
+          "caption": "ภาพประกอบกิจกรรมที่ 4"
+        },
+        {
+          "id": "img-5",
+          "url": "https://images.unsplash.com/photo-5.jpg",
+          "caption": "ภาพประกอบกิจกรรมที่ 5"
+        },
+        {
+          "id": "img-6",
+          "url": "https://images.unsplash.com/photo-6.jpg",
+          "caption": "ภาพประกอบกิจกรรมที่ 6"
+        },
+        {
+          "id": "img-7",
+          "url": "https://images.unsplash.com/photo-7.jpg",
+          "caption": "ภาพประกอบกิจกรรมที่ 7"
+        },
+        {
+          "id": "img-8",
+          "url": "https://images.unsplash.com/photo-8.jpg",
+          "caption": "ภาพประกอบกิจกรรมที่ 8"
+        },
+        {
+          "id": "img-9",
+          "url": "https://images.unsplash.com/photo-9.jpg",
+          "caption": "ภาพประกอบกิจกรรมที่ 9"
+        },
+        {
+          "id": "img-10",
+          "url": "https://images.unsplash.com/photo-10.jpg",
+          "caption": "ภาพประกอบกิจกรรมที่ 10"
+        }
+      ],
+      "author": "แอดมินทดสอบ 10 รูป",
+      "is_published": true,
+      "published_at": "2026-09-16T10:00:00.000Z",
+      "created_at": "2026-09-16T07:59:15.721Z",
+      "updated_at": "2026-09-16T07:59:15.721Z"
     }
   ],
   "summaryData": {
@@ -318,7 +403,7 @@
     "cement_production_pct_national": 80,
     "national_ghg_emissions_rank": 3,
     "reduction_target_tons_co2e": 5000000,
-    "current_reduced_tons_co2e": 3250000,
+    "current_reduced_tons_co2e": 3600000,
     "target_year": 2027,
     "total_projects": 17,
     "active_projects": 15,
@@ -327,9 +412,9 @@
     "core_dimensions_target": 6,
     "core_dimensions_current": 6,
     "forest_target_rai": 15000,
-    "forest_current_rai": 10500,
+    "forest_current_rai": 11200,
     "agri_target_rai": 50000,
-    "agri_current_rai": 28500,
+    "agri_current_rai": 30000,
     "total_budget_baht": 367000000,
     "partnership_model": "4Ps (Public-Private-People Partnership)",
     "wef_initiative_member": true

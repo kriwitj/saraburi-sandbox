@@ -181,36 +181,43 @@ export default function App() {
     return initialSummaryData;
   });
 
+  const [isHydrated, setIsHydrated] = useState(false);
+
   // Persistent Dual-Layer Storage Sync (localStorage + High-Capacity IndexedDB)
+  // Guard with isHydrated: NEVER overwrite storage before initial hydration completes!
   useEffect(() => {
+    if (!isHydrated) return;
     try {
       localStorage.setItem('sb_cms_data', JSON.stringify(cmsData));
     } catch (e) {
       console.warn("localStorage quota exceeded for cmsData, relying on IndexedDB", e);
     }
     idbSet('sb_cms_data', cmsData).catch(() => {});
-  }, [cmsData]);
+  }, [cmsData, isHydrated]);
 
   useEffect(() => {
+    if (!isHydrated) return;
     try {
       localStorage.setItem('sb_summary_data', JSON.stringify(summaryData));
     } catch (e) {}
     idbSet('sb_summary_data', summaryData).catch(() => {});
-  }, [summaryData]);
+  }, [summaryData, isHydrated]);
 
   useEffect(() => {
+    if (!isHydrated) return;
     try {
       localStorage.setItem('sb_projects_data', JSON.stringify(projectsData));
     } catch (e) {}
     idbSet('sb_projects_data', projectsData).catch(() => {});
-  }, [projectsData]);
+  }, [projectsData, isHydrated]);
 
   useEffect(() => {
+    if (!isHydrated) return;
     try {
       localStorage.setItem('sb_activities_data', JSON.stringify(activitiesData));
     } catch (e) {}
     idbSet('sb_activities_data', activitiesData).catch(() => {});
-  }, [activitiesData]);
+  }, [activitiesData, isHydrated]);
   
   // Form Submission Modals
   const [showAddProjectModal, setShowAddProjectModal] = useState(false);
@@ -234,14 +241,22 @@ export default function App() {
   const [projectSearch, setProjectSearch] = useState('');
   const [projectFilterDimension, setProjectFilterDimension] = useState('all');
 
-  // Load backend data dynamically with fallback protection
+  // Load backend data dynamically with fallback protection and smart merge
   const fetchData = async () => {
     try {
       const projRes = await fetch('/api/v1/projects');
       if (projRes.ok) {
         const data = await projRes.json();
         if (Array.isArray(data) && data.length > 0) {
-          setProjectsData(data);
+          setProjectsData(prev => {
+            const merged = [...data];
+            for (const local of prev) {
+              if (!merged.some(m => m.id === local.id)) {
+                merged.unshift(local);
+              }
+            }
+            return merged;
+          });
         }
       }
     } catch (err) {
@@ -253,7 +268,24 @@ export default function App() {
       if (cmsRes.ok) {
         const data = await cmsRes.json();
         if (Array.isArray(data) && data.length > 0) {
-          setCmsData(data);
+          setCmsData(prev => {
+            const merged = [...data];
+            for (const local of prev) {
+              const idx = merged.findIndex(m => m.id === local.id);
+              if (idx === -1) {
+                // Keep local article that was created offline or pending sync
+                merged.unshift(local);
+              } else {
+                // If local article has more gallery images or local content, keep local version
+                const localImages = local.gallery_images?.length || 0;
+                const serverImages = merged[idx].gallery_images?.length || 0;
+                if (localImages > serverImages) {
+                  merged[idx] = local;
+                }
+              }
+            }
+            return merged;
+          });
         }
       }
     } catch (err) {
@@ -265,7 +297,15 @@ export default function App() {
       if (actRes.ok) {
         const data = await actRes.json();
         if (Array.isArray(data) && data.length > 0) {
-          setActivitiesData(data);
+          setActivitiesData(prev => {
+            const merged = [...data];
+            for (const local of prev) {
+              if (!merged.some(m => m.id === local.id)) {
+                merged.unshift(local);
+              }
+            }
+            return merged;
+          });
         }
       }
     } catch (err) {
@@ -315,31 +355,41 @@ export default function App() {
   };
 
   useEffect(() => {
-    // 0. Hydrate state from IndexedDB in case it holds more/larger data than localStorage
+    let isMounted = true;
+
+    // 0. Hydrate state from IndexedDB first before permitting write-backs
     (async () => {
       try {
-        const idbCms = await idbGet('sb_cms_data');
+        const [idbCms, idbProj, idbActs, idbSum] = await Promise.all([
+          idbGet('sb_cms_data'),
+          idbGet('sb_projects_data'),
+          idbGet('sb_activities_data'),
+          idbGet('sb_summary_data')
+        ]);
+
+        if (!isMounted) return;
+
         if (Array.isArray(idbCms) && idbCms.length > 0) {
-          setCmsData(prev => idbCms.length >= prev.length ? idbCms : prev);
+          setCmsData(idbCms);
         }
-        const idbProj = await idbGet('sb_projects_data');
         if (Array.isArray(idbProj) && idbProj.length > 0) {
-          setProjectsData(prev => idbProj.length >= prev.length ? idbProj : prev);
+          setProjectsData(idbProj);
         }
-        const idbActs = await idbGet('sb_activities_data');
         if (Array.isArray(idbActs) && idbActs.length > 0) {
-          setActivitiesData(prev => idbActs.length >= prev.length ? idbActs : prev);
+          setActivitiesData(idbActs);
         }
-        const idbSum = await idbGet('sb_summary_data');
         if (idbSum && typeof idbSum === 'object') {
           setSummaryData(prev => ({ ...prev, ...idbSum }));
         }
       } catch (err) {
         console.warn("IndexedDB hydration error:", err);
+      } finally {
+        if (isMounted) {
+          setIsHydrated(true);
+          fetchData();
+        }
       }
     })();
-
-    fetchData();
 
     // 1. History popstate event listener for back/forward navigation
     const handlePopState = () => {
@@ -359,7 +409,10 @@ export default function App() {
     window.addEventListener('popstate', handlePopState);
     handlePopState(); // Run once on load to route initial URL
     
-    return () => window.removeEventListener('popstate', handlePopState);
+    return () => {
+      isMounted = false;
+      window.removeEventListener('popstate', handlePopState);
+    };
   }, []);
 
   // 2. Sync state changes back to URL pathname (History API Router without #)
@@ -547,12 +600,17 @@ export default function App() {
     };
 
     // 1. Immediately store in local state and dual storage (IndexedDB + localStorage)
+    let updatedArticles;
     setCmsData(prev => {
-      const updated = [newArticle, ...prev];
-      idbSet('sb_cms_data', updated).catch(() => {});
-      try { localStorage.setItem('sb_cms_data', JSON.stringify(updated)); } catch (e) {}
-      return updated;
+      updatedArticles = [newArticle, ...prev];
+      try { localStorage.setItem('sb_cms_data', JSON.stringify(updatedArticles)); } catch (e) {}
+      return updatedArticles;
     });
+
+    if (updatedArticles) {
+      await idbSet('sb_cms_data', updatedArticles).catch(() => {});
+    }
+
     setShowAddNewsModal(false);
     setNewNews({ title: '', category: 'News', summary: '', content: '', author: '', image_url: '', gallery_images: [] });
 
@@ -561,7 +619,7 @@ export default function App() {
       const res = await fetch('/api/v1/cms', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(newArticle)
       });
       if (res.ok) {
         const serverArticle = await res.json();
@@ -671,12 +729,16 @@ export default function App() {
   };
 
   const handleUpdateNews = async (id, payload) => {
+    let updatedList;
     setCmsData(prev => {
-      const updated = prev.map(item => item.id === id ? { ...item, ...payload } : item);
-      idbSet('sb_cms_data', updated).catch(() => {});
-      try { localStorage.setItem('sb_cms_data', JSON.stringify(updated)); } catch (e) {}
-      return updated;
+      updatedList = prev.map(item => item.id === id ? { ...item, ...payload } : item);
+      try { localStorage.setItem('sb_cms_data', JSON.stringify(updatedList)); } catch (e) {}
+      return updatedList;
     });
+
+    if (updatedList) {
+      await idbSet('sb_cms_data', updatedList).catch(() => {});
+    }
 
     try {
       const res = await fetch(`/api/v1/cms/${id}`, {

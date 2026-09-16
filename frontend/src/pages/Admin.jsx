@@ -3,7 +3,7 @@ import {
   Settings, Grid, FileText, Database, Plus, MapPin, Calendar, Users, 
   ChevronRight, Lock, Eye, AlertCircle, Globe, Terminal, LogOut,
   Pencil, Trash2, TrendingUp, Sparkles, Images, CheckCircle2, Save,
-  ArrowUpRight, BarChart3, Check, RefreshCw
+  ArrowUpRight, BarChart3, Check, RefreshCw, Loader2
 } from 'lucide-react';
 import NewsFormModal from '../components/NewsFormModal';
 
@@ -61,6 +61,8 @@ export default function Admin({
   const [editingSummary, setEditingSummary] = useState(summaryData || {});
   const [summarySaved, setSummarySaved] = useState(false);
   const [isSavingSummary, setIsSavingSummary] = useState(false);
+  const [isSavingProject, setIsSavingProject] = useState(false);
+  const [isSavingActivity, setIsSavingActivity] = useState(false);
 
   useEffect(() => {
     if (summaryData) {
@@ -70,6 +72,7 @@ export default function Admin({
 
   const handleSaveSummaryForm = async (e) => {
     e.preventDefault();
+    if (isSavingSummary) return;
     setIsSavingSummary(true);
     try {
       if (onUpdateSummary) {
@@ -84,43 +87,63 @@ export default function Admin({
     }
   };
 
-  const submitEditProject = (e) => {
+  const submitEditProject = async (e) => {
     e.preventDefault();
-    if (editingProject) {
-      const dimsMap = {
-        1: 'Green Industry & Urban Planning',
-        2: 'Clean Energy Transition',
-        3: 'Waste Management',
-        4: 'Low-Carbon Agriculture',
-        5: 'Green Areas & Community Forests',
-        6: 'Transport & Logistics'
-      };
-      const payload = {
-        ...editingProject,
-        dimension_name: dimsMap[editingProject.dimension_id]
-      };
-      onUpdateProject(editingProject.id, payload);
-      setEditingProject(null);
+    if (editingProject && !isSavingProject) {
+      setIsSavingProject(true);
+      try {
+        const dimsMap = {
+          1: 'Green Industry & Urban Planning',
+          2: 'Clean Energy Transition',
+          3: 'Waste Management',
+          4: 'Low-Carbon Agriculture',
+          5: 'Green Areas & Community Forests',
+          6: 'Transport & Logistics'
+        };
+        const payload = {
+          ...editingProject,
+          dimension_name: dimsMap[editingProject.dimension_id]
+        };
+        await onUpdateProject(editingProject.id, payload);
+        setEditingProject(null);
+      } catch (err) {
+        console.error("Error updating project:", err);
+      } finally {
+        setIsSavingProject(false);
+      }
     }
   };
 
-  const submitEditActivity = (e) => {
+  const submitEditActivity = async (e) => {
     e.preventDefault();
-    if (editingActivity) {
-      onUpdateActivity(editingActivity.id, editingActivity);
-      setEditingActivity(null);
+    if (editingActivity && !isSavingActivity) {
+      setIsSavingActivity(true);
+      try {
+        await onUpdateActivity(editingActivity.id, editingActivity);
+        setEditingActivity(null);
+      } catch (err) {
+        console.error("Error updating activity:", err);
+      } finally {
+        setIsSavingActivity(false);
+      }
     }
   };
 
   // Handler for NewsFormModal submission (both create and update)
   const handleNewsModalSubmit = async (formData) => {
-    if (formData.id) {
-      await onUpdateNews(formData.id, formData);
-    } else {
-      await handlePostNews(formData);
+    try {
+      if (formData.id) {
+        await onUpdateNews(formData.id, formData);
+      } else {
+        await handlePostNews(formData);
+      }
+      // Brief confirmation delay so the user sees the saved feedback
+      await new Promise(resolve => setTimeout(resolve, 400));
+      setNewsModalOpen(false);
+      setNewsToEdit(null);
+    } catch (err) {
+      console.error("Failed to submit news modal:", err);
     }
-    setNewsModalOpen(false);
-    setNewsToEdit(null);
   };
 
   if (!isAuthenticated) {
@@ -940,8 +963,21 @@ export default function Admin({
                 <label className="text-slate-500 font-bold block">หน่วยงานรับผิดชอบหลัก</label>
                 <input type="text" required value={editingProject.agency} onChange={e => setEditingProject({...editingProject, agency: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-slate-800 focus:outline-none" />
               </div>
-              <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl transition shadow-md">
-                บันทึกการแก้ไขโครงการ
+              <button 
+                type="submit" 
+                disabled={isSavingProject}
+                className={`w-full font-bold py-3 rounded-xl transition shadow-md flex items-center justify-center gap-2 ${
+                  isSavingProject ? 'bg-emerald-700 text-white cursor-wait' : 'bg-emerald-600 hover:bg-emerald-500 text-white'
+                }`}
+              >
+                {isSavingProject ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>กำลังบันทึกการแก้ไขโครงการ...</span>
+                  </>
+                ) : (
+                  <span>บันทึกการแก้ไขโครงการ</span>
+                )}
               </button>
             </form>
           </div>
@@ -985,8 +1021,21 @@ export default function Admin({
                 <label className="text-slate-500 font-bold block">งบนำร่องที่ใช้จริง (บาท)</label>
                 <input type="number" required value={editingActivity.budget_spent_baht} onChange={e => setEditingActivity({...editingActivity, budget_spent_baht: Number(e.target.value)})} className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-slate-800 focus:outline-none" />
               </div>
-              <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl transition shadow-md">
-                บันทึกการแก้ไขกิจกรรม
+              <button 
+                type="submit" 
+                disabled={isSavingActivity}
+                className={`w-full font-bold py-3 rounded-xl transition shadow-md flex items-center justify-center gap-2 ${
+                  isSavingActivity ? 'bg-emerald-700 text-white cursor-wait' : 'bg-emerald-600 hover:bg-emerald-500 text-white'
+                }`}
+              >
+                {isSavingActivity ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>กำลังบันทึกการแก้ไขกิจกรรม...</span>
+                  </>
+                ) : (
+                  <span>บันทึกการแก้ไขกิจกรรม</span>
+                )}
               </button>
             </form>
           </div>

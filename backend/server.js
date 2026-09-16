@@ -622,13 +622,30 @@ app.get('/api/v1/cms/:id', (req, res) => {
 });
 
 app.post('/api/v1/cms', (req, res) => {
-  const { title, category, summary, content, image_url, gallery_images, author, published_at } = req.body;
+  const { id, title, category, summary, content, image_url, gallery_images, author, published_at } = req.body;
   if (!title || !content || !category) {
     return res.status(400).json({ error: 'Missing required CMS fields.' });
   }
 
+  // If an article with this ID already exists, update it cleanly (idempotent upsert)
+  if (id) {
+    const existingIdx = cmsArticles.findIndex(c => c.id === Number(id));
+    if (existingIdx !== -1) {
+      const updated = {
+        ...cmsArticles[existingIdx],
+        ...req.body,
+        id: Number(id),
+        published_at: published_at ? new Date(published_at).toISOString() : cmsArticles[existingIdx].published_at,
+        updated_at: new Date().toISOString()
+      };
+      cmsArticles[existingIdx] = updated;
+      saveDataStore();
+      return res.json(updated);
+    }
+  }
+
   const newArticle = {
-    id: cmsArticles.length > 0 ? Math.max(...cmsArticles.map(c => c.id)) + 1 : 1,
+    id: id ? Number(id) : (cmsArticles.length > 0 ? Math.max(...cmsArticles.map(c => c.id)) + 1 : 1),
     title,
     slug: title.toLowerCase().replace(/[^a-z0-9\u0E00-\u0E7F]+/g, '-').replace(/(^-|-$)+/g, '') || `news-${Date.now()}`,
     category,
