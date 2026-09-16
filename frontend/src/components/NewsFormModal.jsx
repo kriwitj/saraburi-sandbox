@@ -37,49 +37,106 @@ export default function NewsFormModal({
   const [draggedIdx, setDraggedIdx] = useState(null);
   const [dragOverIdx, setDragOverIdx] = useState(null);
 
-  // Compress and resize image files to prevent exceeding storage quotas
-  const compressImageFile = (file, maxWidth = 1200, maxHeight = 1200, quality = 0.8) => {
+  // Bulletproof image processor: reads as Data URL with optional downscaling
+  const processImageFile = (file) => {
     return new Promise((resolve) => {
-      if (file.type === 'image/svg+xml' || file.type === 'image/gif') {
-        const reader = new FileReader();
-        reader.onload = (e) => resolve(e.target.result);
-        reader.onerror = () => resolve('');
-        reader.readAsDataURL(file);
-        return;
-      }
+      // 1. Always use FileReader to read the file reliably first
+      const reader = new FileReader();
+      
+      reader.onerror = () => {
+        console.warn("FileReader error for file:", file.name);
+        resolve(null);
+      };
 
-      const img = new Image();
-      const url = URL.createObjectURL(file);
-      img.onload = () => {
-        URL.revokeObjectURL(url);
-        let { width, height } = img;
-        if (width > maxWidth || height > maxHeight) {
-          if (width > height) {
-            height = Math.round((height * maxWidth) / width);
-            width = maxWidth;
-          } else {
-            width = Math.round((width * maxHeight) / height);
-            maxHeight = height;
-          }
+      reader.onload = (e) => {
+        const rawDataUrl = e.target.result;
+        if (!rawDataUrl || typeof rawDataUrl !== 'string') {
+          resolve(null);
+          return;
         }
 
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, width, height);
+        // For small files (< 300KB) or SVG/GIF, return immediately
+        if (file.size < 300 * 1024 || file.type === 'image/svg+xml' || file.type === 'image/gif') {
+          resolve(rawDataUrl);
+          return;
+        }
 
-        const compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
-        resolve(compressedDataUrl);
+        // For larger photos, attempt canvas compression to save storage with safety timeout
+        let settled = false;
+        const timer = setTimeout(() => {
+          if (!settled) {
+            settled = true;
+            resolve(rawDataUrl); // Fallback to raw data URL on timeout
+          }
+        }, 800);
+
+        try {
+          const img = new Image();
+          img.onload = () => {
+            if (settled) return;
+            clearTimeout(timer);
+            settled = true;
+
+            try {
+              let width = img.naturalWidth || img.width;
+              let height = img.naturalHeight || img.height;
+
+              if (!width || !height) {
+                resolve(rawDataUrl);
+                return;
+              }
+
+              const maxDim = 1200;
+              if (width > maxDim || height > maxDim) {
+                if (width > height) {
+                  height = Math.round((height * maxDim) / width);
+                  width = maxDim;
+                } else {
+                  width = Math.round((width * maxDim) / height);
+                  height = maxDim;
+                }
+              }
+
+              const canvas = document.createElement('canvas');
+              canvas.width = width;
+              canvas.height = height;
+              const ctx = canvas.getContext('2d');
+              if (!ctx) {
+                resolve(rawDataUrl);
+                return;
+              }
+
+              ctx.drawImage(img, 0, 0, width, height);
+              const compressed = canvas.toDataURL('image/jpeg', 0.8);
+              if (compressed && compressed.length > 50) {
+                resolve(compressed);
+              } else {
+                resolve(rawDataUrl);
+              }
+            } catch (err) {
+              resolve(rawDataUrl);
+            }
+          };
+
+          img.onerror = () => {
+            if (!settled) {
+              clearTimeout(timer);
+              settled = true;
+              resolve(rawDataUrl);
+            }
+          };
+
+          img.src = rawDataUrl;
+        } catch (err) {
+          if (!settled) {
+            clearTimeout(timer);
+            settled = true;
+            resolve(rawDataUrl);
+          }
+        }
       };
-      img.onerror = () => {
-        URL.revokeObjectURL(url);
-        const reader = new FileReader();
-        reader.onload = (e) => resolve(e.target.result);
-        reader.onerror = () => resolve('');
-        reader.readAsDataURL(file);
-      };
-      img.src = url;
+
+      reader.readAsDataURL(file);
     });
   };
 
@@ -129,11 +186,11 @@ export default function NewsFormModal({
     try {
       const newImages = [];
       for (const file of files) {
-        const compressedBase64 = await compressImageFile(file);
-        if (compressedBase64) {
+        const processedDataUrl = await processImageFile(file);
+        if (processedDataUrl) {
           newImages.push({
             id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-            url: compressedBase64,
+            url: processedDataUrl,
             caption: file.name.replace(/\.[^/.]+$/, "")
           });
         }
@@ -411,20 +468,32 @@ export default function NewsFormModal({
 
             {/* Upload Action Zone */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <label className="border-2 border-dashed border-emerald-300 hover:border-emerald-500 bg-emerald-50/40 hover:bg-emerald-50/80 rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer transition text-center space-y-1.5">
+              <label 
+                htmlFor="cms-gallery-input"
+                onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                    handleFilesUpload({ target: { files: e.dataTransfer.files } });
+                  }
+                }}
+                className="border-2 border-dashed border-emerald-300 hover:border-emerald-500 bg-emerald-50/40 hover:bg-emerald-50/80 rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer transition text-center space-y-1.5"
+              >
                 <Upload className="w-6 h-6 text-emerald-600" />
                 <span className="font-bold text-xs text-emerald-800">
                   {isProcessingFiles ? 'กำลังประมวลผลไฟล์ภาพ...' : 'คลิกเพื่อเลือกไฟล์ภาพหลายรูปพร้อมกัน'}
                 </span>
                 <span className="text-[10px] text-slate-500">
-                  รองรับ JPG, PNG, WEBP (เลือกได้หลายไฟล์)
+                  รองรับ JPG, PNG, WEBP (เลือกได้หลายไฟล์หรือลากไฟล์มาวางที่นี่)
                 </span>
                 <input 
+                  id="cms-gallery-input"
                   type="file" 
                   multiple 
                   accept="image/*" 
                   onChange={handleFilesUpload} 
-                  className="hidden" 
+                  className="sr-only" 
                   disabled={isProcessingFiles}
                 />
               </label>
