@@ -603,13 +603,55 @@ app.delete('/api/v1/projects/:id', (req, res) => {
 
 // CMS Blog Endpoints
 app.get('/api/v1/cms', (req, res) => {
-  // Return articles sorted by published_at or created_at descending
-  const sorted = [...cmsArticles].sort((a, b) => {
-    const dateA = new Date(a.published_at || a.created_at).getTime();
-    const dateB = new Date(b.published_at || b.created_at).getTime();
-    return dateB - dateA;
+  let list = [...cmsArticles];
+  const { category, search, q, sort } = req.query;
+  const searchQuery = (search || q || '').trim().toLowerCase();
+
+  // Filter by category
+  if (category && category !== 'all') {
+    list = list.filter(c => c.category === category);
+  }
+
+  // Filter by search query
+  if (searchQuery) {
+    list = list.filter(c => {
+      const titleMatch = (c.title || '').toLowerCase().includes(searchQuery);
+      const summaryMatch = (c.summary || '').toLowerCase().includes(searchQuery);
+      const contentMatch = (c.content || '').toLowerCase().includes(searchQuery);
+      const authorMatch = (c.author || '').toLowerCase().includes(searchQuery);
+      const idMatch = String(c.id || '').includes(searchQuery.replace('#', ''));
+      return titleMatch || summaryMatch || contentMatch || authorMatch || idMatch;
+    });
+  }
+
+  // Sort articles (Default: published_desc)
+  const sortBy = sort || 'published_desc';
+  list.sort((a, b) => {
+    const dateA = new Date(a.published_at || a.created_at || 0).getTime();
+    const dateB = new Date(b.published_at || b.created_at || 0).getTime();
+
+    switch (sortBy) {
+      case 'published_asc':
+        return dateA - dateB;
+      case 'published_desc':
+      default:
+        return dateB - dateA;
+      case 'title_asc':
+        return (a.title || '').localeCompare(b.title || '', 'th');
+      case 'title_desc':
+        return (b.title || '').localeCompare(a.title || '', 'th');
+      case 'images_desc':
+        return (b.gallery_images?.length || 0) - (a.gallery_images?.length || 0);
+      case 'images_asc':
+        return (a.gallery_images?.length || 0) - (b.gallery_images?.length || 0);
+      case 'id_asc':
+        return Number(a.id) - Number(b.id);
+      case 'id_desc':
+        return Number(b.id) - Number(a.id);
+    }
   });
-  res.json(sorted);
+
+  res.json(list);
 });
 
 app.get('/api/v1/cms/:id', (req, res) => {

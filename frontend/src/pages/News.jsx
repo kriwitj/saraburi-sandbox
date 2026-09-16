@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Calendar, User, Newspaper, CalendarDays, Images, ArrowRight } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { Calendar, User, Newspaper, CalendarDays, Images, ArrowRight, Search, ArrowUpDown, X, RotateCcw } from 'lucide-react';
 
 export default function News({
   cmsData = [],
@@ -8,18 +8,52 @@ export default function News({
   navigateToNewsDetail
 }) {
   const [activeCategory, setActiveCategory] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState('published_desc');
 
-  // Sort articles by published_at (or created_at) descending
-  const sortedArticles = [...cmsData].sort((a, b) => {
-    const dateA = new Date(a.published_at || a.created_at || 0).getTime();
-    const dateB = new Date(b.published_at || b.created_at || 0).getTime();
-    return dateB - dateA;
-  });
+  // Filter and Sort articles (Default: published_desc)
+  const processedNews = useMemo(() => {
+    let result = [...cmsData];
 
-  const filteredNews = sortedArticles.filter(news => {
-    if (activeCategory === 'all') return true;
-    return news.category === activeCategory;
-  });
+    // Filter by Category
+    if (activeCategory !== 'all') {
+      result = result.filter(item => item.category === activeCategory);
+    }
+
+    // Filter by Search Query
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      result = result.filter(item => {
+        const titleMatch = (item.title || '').toLowerCase().includes(q);
+        const summaryMatch = (item.summary || '').toLowerCase().includes(q);
+        const contentMatch = (item.content || '').toLowerCase().includes(q);
+        const authorMatch = (item.author || '').toLowerCase().includes(q);
+        return titleMatch || summaryMatch || contentMatch || authorMatch;
+      });
+    }
+
+    // Multi-criteria sorting with Thai locale support
+    result.sort((a, b) => {
+      const dateA = new Date(a.published_at || a.created_at || 0).getTime();
+      const dateB = new Date(b.published_at || b.created_at || 0).getTime();
+
+      switch (sortBy) {
+        case 'published_asc':
+          return dateA - dateB;
+        case 'published_desc':
+        default:
+          return dateB - dateA;
+        case 'title_asc':
+          return (a.title || '').localeCompare(b.title || '', 'th');
+        case 'title_desc':
+          return (b.title || '').localeCompare(a.title || '', 'th');
+        case 'images_desc':
+          return (b.gallery_images?.length || 0) - (a.gallery_images?.length || 0);
+      }
+    });
+
+    return result;
+  }, [cmsData, activeCategory, searchQuery, sortBy]);
 
   return (
     <section className="py-16 px-6 lg:px-12 max-w-7xl mx-auto w-full space-y-10 animate-in fade-in duration-200">
@@ -33,36 +67,106 @@ export default function News({
         <p className="text-sm text-slate-500">ติดตามความคืบหน้าโครงการยุทธศาสตร์ กิจกรรมชุมชน และการประกาศสำคัญเกี่ยวกับสระบุรีแซนด์บ็อกซ์</p>
       </div>
 
-      {/* Category filters */}
-      <div className="flex flex-wrap gap-2 justify-center border-b border-slate-200 pb-5 text-xs">
-        {[
-          { key: 'all', label: 'ทั้งหมด' },
-          { key: 'News', label: 'ข่าวประชาสัมพันธ์' },
-          { key: 'Activity', label: 'ภาพกิจกรรมย่อย' },
-          { key: 'Announcement', label: 'ประกาศ/ข่าวสาร' }
-        ].map(tab => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveCategory(tab.key)}
-            className={`px-4 py-2 rounded-xl font-bold transition ${
-              activeCategory === tab.key 
-                ? 'bg-emerald-600 text-white shadow-sm' 
-                : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
+      {/* Search, Filter & Sort Toolbar */}
+      <div className="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-sm space-y-4">
+        <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+          {/* Category tabs */}
+          <div className="flex flex-wrap gap-2 w-full md:w-auto text-xs">
+            {[
+              { key: 'all', label: 'ทั้งหมด' },
+              { key: 'News', label: 'ข่าวประชาสัมพันธ์' },
+              { key: 'Activity', label: 'ภาพกิจกรรมย่อย' },
+              { key: 'Announcement', label: 'ประกาศ/ข่าวสาร' }
+            ].map(tab => (
+              <button
+                key={tab.key}
+                onClick={() => setActiveCategory(tab.key)}
+                className={`px-3.5 py-1.5 rounded-xl font-bold transition ${
+                  activeCategory === tab.key 
+                    ? 'bg-emerald-600 text-white shadow-sm' 
+                    : 'bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Search and Sort controls */}
+          <div className="flex flex-col sm:flex-row items-center gap-2.5 w-full md:w-auto">
+            <div className="relative w-full sm:w-64">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                placeholder="ค้นหาข่าวสาร, เนื้อหา, ผู้เขียน..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-8 py-1.5 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-emerald-500 focus:bg-white transition"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
+                  title="ล้างคำค้นหา"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            <div className="relative w-full sm:w-48">
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-700 font-medium focus:outline-none focus:border-emerald-500 focus:bg-white cursor-pointer appearance-none pr-8"
+              >
+                <option value="published_desc">วันที่: ล่าสุด (Default)</option>
+                <option value="published_asc">วันที่: เก่าที่สุด</option>
+                <option value="title_asc">หัวข้อ: ก - ฮ (A-Z)</option>
+                <option value="title_desc">หัวข้อ: ฮ - ก (Z-A)</option>
+                <option value="images_desc">รูปภาพ: มากที่สุด</option>
+              </select>
+              <ArrowUpDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            </div>
+          </div>
+        </div>
+
+        {/* Counter and quick reset if filter/search/sort is modified */}
+        <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-[11px] text-slate-500">
+          <div className="flex items-center gap-2">
+            <span>
+              แสดง <strong className="text-slate-800 font-mono">{processedNews.length}</strong> จาก {cmsData.length} ข่าว
+            </span>
+            {(searchQuery || activeCategory !== 'all' || sortBy !== 'published_desc') && (
+              <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full">
+                กำลังกรองผลลัพธ์
+              </span>
+            )}
+          </div>
+          {(searchQuery || activeCategory !== 'all' || sortBy !== 'published_desc') && (
+            <button
+              onClick={() => {
+                setSearchQuery('');
+                setActiveCategory('all');
+                setSortBy('published_desc');
+              }}
+              className="text-emerald-700 hover:text-emerald-800 font-bold hover:underline transition inline-flex items-center gap-1"
+            >
+              <RotateCcw className="w-3 h-3" />
+              <span>รีเซ็ตการค้นหาและการจัดเรียง</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Grid: News lists */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredNews.length === 0 ? (
+        {processedNews.length === 0 ? (
           <div className="col-span-full py-16 text-center text-xs text-slate-400 border border-dashed border-slate-200 rounded-3xl">
-            ไม่พบข่าวสารหรือภาพกิจกรรมในหมวดหมู่นี้
+            {searchQuery ? `ไม่พบข่าวสารที่ตรงกับคำค้นหา "${searchQuery}"` : 'ไม่พบข่าวสารหรือภาพกิจกรรมในหมวดหมู่นี้'}
           </div>
         ) : (
-          filteredNews.map(news => {
+          processedNews.map(news => {
             const pubDate = new Date(news.published_at || news.created_at || Date.now());
             const formattedDate = pubDate.toLocaleDateString('th-TH', { 
               year: 'numeric', 

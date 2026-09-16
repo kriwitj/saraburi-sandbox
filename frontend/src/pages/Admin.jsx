@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Settings, Grid, FileText, Database, Plus, MapPin, Calendar, Users, 
   ChevronRight, Lock, Eye, AlertCircle, Globe, Terminal, LogOut,
   Pencil, Trash2, TrendingUp, Sparkles, Images, CheckCircle2, Save,
-  ArrowUpRight, BarChart3, Check, RefreshCw, Loader2
+  ArrowUpRight, BarChart3, Check, RefreshCw, Loader2, Search,
+  ArrowUpDown, Filter, X
 } from 'lucide-react';
 import NewsFormModal from '../components/NewsFormModal';
 
@@ -63,6 +64,70 @@ export default function Admin({
   const [isSavingSummary, setIsSavingSummary] = useState(false);
   const [isSavingProject, setIsSavingProject] = useState(false);
   const [isSavingActivity, setIsSavingActivity] = useState(false);
+
+  // CMS Articles Search, Filter & Sort States (Default sort: published_at descending)
+  const [cmsSearch, setCmsSearch] = useState('');
+  const [cmsSortBy, setCmsSortBy] = useState('published_desc');
+  const [cmsCategoryFilter, setCmsCategoryFilter] = useState('all');
+
+  // Processed CMS articles with real-time search, category filtering, and customizable sorting
+  const processedCmsArticles = useMemo(() => {
+    let list = Array.isArray(cmsData) ? [...cmsData] : [];
+
+    // 1. Search Query Filter (Title, Summary, Content, Author, ID)
+    if (cmsSearch.trim()) {
+      const q = cmsSearch.trim().toLowerCase();
+      list = list.filter(item => {
+        const titleMatch = (item.title || '').toLowerCase().includes(q);
+        const summaryMatch = (item.summary || '').toLowerCase().includes(q);
+        const contentMatch = (item.content || '').toLowerCase().includes(q);
+        const authorMatch = (item.author || '').toLowerCase().includes(q);
+        const categoryMatch = (item.category || '').toLowerCase().includes(q);
+        const idMatch = String(item.id || '').includes(q);
+        return titleMatch || summaryMatch || contentMatch || authorMatch || categoryMatch || idMatch;
+      });
+    }
+
+    // 2. Category Filter
+    if (cmsCategoryFilter !== 'all') {
+      list = list.filter(item => item.category === cmsCategoryFilter);
+    }
+
+    // 3. Sorting (Default: published_desc)
+    list.sort((a, b) => {
+      const dateA = new Date(a.published_at || a.created_at || 0).getTime();
+      const dateB = new Date(b.published_at || b.created_at || 0).getTime();
+
+      switch (cmsSortBy) {
+        case 'published_desc': // Default: วันที่เผยแพร่: ใหม่ -> เก่า
+          return dateB - dateA;
+        case 'published_asc': // วันที่เผยแพร่: เก่า -> ใหม่
+          return dateA - dateB;
+        case 'title_asc': // ชื่อหัวข้อ: ก - ฮ (A-Z)
+          return (a.title || '').localeCompare(b.title || '', 'th');
+        case 'title_desc': // ชื่อหัวข้อ: ฮ - ก (Z-A)
+          return (b.title || '').localeCompare(a.title || '', 'th');
+        case 'images_desc': { // จำนวนรูปภาพ: มากที่สุด
+          const countA = a.gallery_images?.length || (a.image_url ? 1 : 0);
+          const countB = b.gallery_images?.length || (b.image_url ? 1 : 0);
+          return countB - countA;
+        }
+        case 'images_asc': { // จำนวนรูปภาพ: น้อยที่สุด
+          const countA = a.gallery_images?.length || (a.image_url ? 1 : 0);
+          const countB = b.gallery_images?.length || (b.image_url ? 1 : 0);
+          return countA - countB;
+        }
+        case 'id_desc': // รหัส ID: มาก -> น้อย
+          return Number(b.id || 0) - Number(a.id || 0);
+        case 'id_asc': // รหัส ID: น้อย -> มาก
+          return Number(a.id || 0) - Number(b.id || 0);
+        default:
+          return dateB - dateA;
+      }
+    });
+
+    return list;
+  }, [cmsData, cmsSearch, cmsCategoryFilter, cmsSortBy]);
 
   useEffect(() => {
     if (summaryData) {
@@ -630,13 +695,118 @@ export default function Admin({
                 </button>
               </div>
 
+              {/* Search, Filter & Sort Toolbar */}
+              <div className="bg-slate-50/70 border border-slate-200/80 rounded-2xl p-3.5 space-y-3">
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-2.5">
+                  {/* Search Input */}
+                  <div className="md:col-span-6 relative">
+                    <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      placeholder="ค้นหาหัวข้อข่าว, สรุปย่อ, เนื้อหา, ผู้เขียน, หรือ #ID..."
+                      value={cmsSearch}
+                      onChange={(e) => setCmsSearch(e.target.value)}
+                      className="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-8 py-2 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-emerald-500 transition shadow-2xs"
+                    />
+                    {cmsSearch && (
+                      <button
+                        onClick={() => setCmsSearch('')}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
+                        title="ล้างคำค้นหา"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Category Filter */}
+                  <div className="md:col-span-3 relative">
+                    <select
+                      value={cmsCategoryFilter}
+                      onChange={(e) => setCmsCategoryFilter(e.target.value)}
+                      className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-700 font-medium focus:outline-none focus:border-emerald-500 cursor-pointer appearance-none pr-8 shadow-2xs"
+                    >
+                      <option value="all">ทุกหมวดหมู่ (ทั้งหมด)</option>
+                      <option value="News">ข่าวประชาสัมพันธ์ (News)</option>
+                      <option value="Activity">ภาพกิจกรรมย่อย (Activity)</option>
+                      <option value="Announcement">ประกาศ/ข่าวสาร (Announcement)</option>
+                    </select>
+                    <Filter className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  </div>
+
+                  {/* Sort By Selector (Default: published_desc) */}
+                  <div className="md:col-span-3 relative">
+                    <select
+                      value={cmsSortBy}
+                      onChange={(e) => setCmsSortBy(e.target.value)}
+                      className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-700 font-medium focus:outline-none focus:border-emerald-500 cursor-pointer appearance-none pr-8 shadow-2xs"
+                    >
+                      <option value="published_desc">วันที่เผยแพร่: ล่าสุด (Default)</option>
+                      <option value="published_asc">วันที่เผยแพร่: เก่าที่สุด</option>
+                      <option value="title_asc">ชื่อหัวข้อ: ก - ฮ (A-Z)</option>
+                      <option value="title_desc">ชื่อหัวข้อ: ฮ - ก (Z-A)</option>
+                      <option value="images_desc">จำนวนรูปภาพ: มากที่สุด</option>
+                      <option value="images_asc">จำนวนรูปภาพ: น้อยที่สุด</option>
+                      <option value="id_desc">รหัสบทความ: ล่าสุด (#ID)</option>
+                      <option value="id_asc">รหัสบทความ: เก่าสุด (#ID)</option>
+                    </select>
+                    <ArrowUpDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  </div>
+                </div>
+
+                {/* Sub-bar status and reset */}
+                <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-200/60 text-[11px] text-slate-500">
+                  <div className="flex items-center gap-2">
+                    <span>
+                      แสดง <strong className="text-slate-800 font-mono">{processedCmsArticles.length}</strong> จากทั้งหมด {cmsData.length} บทความ
+                    </span>
+                    {(cmsSearch || cmsCategoryFilter !== 'all' || cmsSortBy !== 'published_desc') && (
+                      <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full">
+                        กำลังกรอง/จัดเรียง
+                      </span>
+                    )}
+                  </div>
+
+                  {(cmsSearch || cmsCategoryFilter !== 'all' || cmsSortBy !== 'published_desc') && (
+                    <button
+                      onClick={() => {
+                        setCmsSearch('');
+                        setCmsCategoryFilter('all');
+                        setCmsSortBy('published_desc');
+                      }}
+                      className="text-emerald-700 hover:text-emerald-800 font-bold flex items-center gap-1 transition"
+                    >
+                      <RefreshCw className="w-3 h-3" />
+                      <span>รีเซ็ตการค้นหาและการจัดเรียง</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Articles List */}
               <div className="space-y-3">
                 {cmsData.length === 0 ? (
                   <div className="py-12 text-center text-xs text-slate-400 border border-dashed border-slate-200 rounded-2xl">
                     ยังไม่มีบทความในระบบ คลิกปุ่ม "เขียนข่าวประชาสัมพันธ์" ด้านบนเพื่อเพิ่มข่าว
                   </div>
+                ) : processedCmsArticles.length === 0 ? (
+                  <div className="py-12 text-center text-xs text-slate-500 border border-dashed border-slate-200 rounded-2xl space-y-2.5">
+                    <AlertCircle className="w-6 h-6 text-slate-400 mx-auto" />
+                    <p>ไม่พบบทความข่าวสารที่ตรงกับเงื่อนไขการค้นหาหรือตัวกรอง</p>
+                    <button
+                      onClick={() => {
+                        setCmsSearch('');
+                        setCmsCategoryFilter('all');
+                        setCmsSortBy('published_desc');
+                      }}
+                      className="text-emerald-600 font-bold hover:underline inline-flex items-center gap-1"
+                    >
+                      <RefreshCw className="w-3 h-3" />
+                      <span>ล้างคำค้นหาและตัวกรอง</span>
+                    </button>
+                  </div>
                 ) : (
-                  cmsData.map(c => {
+                  processedCmsArticles.map(c => {
                     const pubDate = new Date(c.published_at || c.created_at || Date.now());
                     const formattedDate = pubDate.toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' });
                     const formattedTime = pubDate.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
