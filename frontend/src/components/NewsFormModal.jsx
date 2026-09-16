@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { 
   X, Image, Upload, Trash2, Star, Calendar, Sparkles, Check, 
-  AlertCircle, Plus, FileText, ArrowRight, CornerDownRight
+  AlertCircle, Plus, FileText, ArrowRight, CornerDownRight,
+  GripVertical, Move, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import RichTextEditor from './RichTextEditor';
 
@@ -33,6 +34,8 @@ export default function NewsFormModal({
   });
 
   const [isProcessingFiles, setIsProcessingFiles] = useState(false);
+  const [draggedIdx, setDraggedIdx] = useState(null);
+  const [dragOverIdx, setDragOverIdx] = useState(null);
 
   useEffect(() => {
     if (initialData) {
@@ -129,6 +132,70 @@ export default function NewsFormModal({
       ...prev,
       image_url: imgUrl
     }));
+  };
+
+  // Drag and Drop handlers for reordering gallery images
+  const handleDragStart = (e, index) => {
+    setDraggedIdx(index);
+    e.dataTransfer.effectAllowed = 'move';
+    try {
+      e.dataTransfer.setData('text/plain', index.toString());
+    } catch (err) {}
+  };
+
+  const handleDragOver = (e, index) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (dragOverIdx !== index) {
+      setDragOverIdx(index);
+    }
+  };
+
+  const handleDragLeave = (e, index) => {
+    if (dragOverIdx === index) {
+      setDragOverIdx(null);
+    }
+  };
+
+  const handleDrop = (e, targetIdx) => {
+    e.preventDefault();
+    if (draggedIdx === null || draggedIdx === targetIdx) {
+      setDraggedIdx(null);
+      setDragOverIdx(null);
+      return;
+    }
+
+    setFormData(prev => {
+      const items = [...prev.gallery_images];
+      const [movedItem] = items.splice(draggedIdx, 1);
+      items.splice(targetIdx, 0, movedItem);
+      return {
+        ...prev,
+        gallery_images: items
+      };
+    });
+
+    setDraggedIdx(null);
+    setDragOverIdx(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedIdx(null);
+    setDragOverIdx(null);
+  };
+
+  // Quick move image left/right
+  const handleMoveImage = (fromIdx, toIdx) => {
+    if (toIdx < 0 || toIdx >= formData.gallery_images.length) return;
+    setFormData(prev => {
+      const items = [...prev.gallery_images];
+      const [movedItem] = items.splice(fromIdx, 1);
+      items.splice(toIdx, 0, movedItem);
+      return {
+        ...prev,
+        gallery_images: items
+      };
+    });
   };
 
   const handleInsertIntoContent = (imgUrl, caption = '') => {
@@ -345,35 +412,68 @@ export default function NewsFormModal({
 
             {/* Uploaded Gallery Grid */}
             {formData.gallery_images && formData.gallery_images.length > 0 && (
-              <div className="space-y-2 pt-2">
-                <span className="text-[10px] font-bold text-slate-500 uppercase block">
-                  ภาพที่จัดเก็บในบทความนี้ (คลิก "ตั้งเป็นหน้าปก" หรือ "แทรกลงเนื้อหา"):
-                </span>
+              <div className="space-y-2.5 pt-2">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-[11px] font-bold text-slate-700 flex items-center gap-1.5">
+                    <GripVertical className="w-4 h-4 text-emerald-600" />
+                    <span>ภาพที่จัดเก็บในบทความ (คลิกลากสลับเรียงลำดับ หรือกดปุ่มลูกศร):</span>
+                  </span>
+                  <span className="text-[10px] text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
+                    <Move className="w-3 h-3 text-emerald-600" />
+                    <span>ลากเพื่อจัดเรียงลำดับภาพได้อิสระ</span>
+                  </span>
+                </div>
+
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                   {formData.gallery_images.map((img, idx) => {
                     const src = typeof img === 'string' ? img : img.url;
                     const caption = typeof img === 'string' ? '' : img.caption;
                     const isCover = formData.image_url === src;
+                    const isDragging = draggedIdx === idx;
+                    const isOver = dragOverIdx === idx && draggedIdx !== idx;
 
                     return (
                       <div 
-                        key={idx} 
-                        className={`relative rounded-xl overflow-hidden border p-1 bg-white shadow-xs flex flex-col justify-between transition ${
-                          isCover ? 'border-emerald-500 ring-2 ring-emerald-500/20' : 'border-slate-200'
+                        key={idx}
+                        draggable={true}
+                        onDragStart={(e) => handleDragStart(e, idx)}
+                        onDragOver={(e) => handleDragOver(e, idx)}
+                        onDragLeave={(e) => handleDragLeave(e, idx)}
+                        onDrop={(e) => handleDrop(e, idx)}
+                        onDragEnd={handleDragEnd}
+                        className={`relative rounded-xl overflow-hidden border p-1.5 bg-white shadow-xs flex flex-col justify-between transition-all duration-150 cursor-grab active:cursor-grabbing select-none ${
+                          isDragging ? 'opacity-40 scale-95 border-dashed border-emerald-500 ring-2 ring-emerald-400' : ''
+                        } ${
+                          isOver ? 'ring-2 ring-emerald-500 scale-102 bg-emerald-50/50' : ''
+                        } ${
+                          isCover ? 'border-emerald-500 ring-1 ring-emerald-500/30' : 'border-slate-200 hover:border-slate-300'
                         }`}
                       >
-                        <div className="relative aspect-video rounded-lg overflow-hidden bg-slate-100">
-                          <img src={src} alt="Uploaded thumbnail" className="w-full h-full object-cover" />
+                        <div className="relative aspect-video rounded-lg overflow-hidden bg-slate-100 group">
+                          <img src={src} alt="Uploaded thumbnail" className="w-full h-full object-cover pointer-events-none" />
+                          
+                          {/* Drag Handle & Order Badge */}
+                          <div 
+                            className="absolute top-1.5 left-1.5 bg-slate-900/80 hover:bg-slate-900 text-white text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-md flex items-center gap-0.5 shadow-sm"
+                            title="คลิกลากการ์ดนี้เพื่อสลับตำแหน่ง"
+                          >
+                            <GripVertical className="w-3 h-3 text-emerald-400" />
+                            <span>#{idx + 1}</span>
+                          </div>
+
+                          {/* Cover Badge */}
                           {isCover && (
-                            <div className="absolute top-1.5 left-1.5 bg-emerald-600 text-white text-[9px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1 shadow-xs">
+                            <div className="absolute bottom-1.5 left-1.5 bg-emerald-600 text-white text-[9px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1 shadow-sm">
                               <Star className="w-2.5 h-2.5 fill-current" />
                               <span>หน้าปก</span>
                             </div>
                           )}
+
+                          {/* Delete Button */}
                           <button
                             type="button"
                             onClick={() => handleRemoveImage(idx)}
-                            className="absolute top-1.5 right-1.5 bg-slate-900/70 hover:bg-red-600 text-white p-1 rounded-md transition"
+                            className="absolute top-1.5 right-1.5 bg-slate-900/70 hover:bg-red-600 text-white p-1 rounded-md transition shadow-sm"
                             title="ลบภาพนี้"
                           >
                             <Trash2 className="w-3 h-3" />
@@ -382,6 +482,31 @@ export default function NewsFormModal({
 
                         {/* Controls */}
                         <div className="mt-2 space-y-1.5">
+                          {/* Order shifting arrows */}
+                          <div className="flex items-center justify-between gap-1">
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                disabled={idx === 0}
+                                onClick={() => handleMoveImage(idx, idx - 1)}
+                                className="p-1 bg-slate-50 hover:bg-emerald-50 text-slate-600 hover:text-emerald-700 rounded border border-slate-200 disabled:opacity-20 transition"
+                                title="ย้ายไปซ้าย (เลื่อนขึ้นก่อนหน้า)"
+                              >
+                                <ChevronLeft className="w-3 h-3" />
+                              </button>
+                              <button
+                                type="button"
+                                disabled={idx === formData.gallery_images.length - 1}
+                                onClick={() => handleMoveImage(idx, idx + 1)}
+                                className="p-1 bg-slate-50 hover:bg-emerald-50 text-slate-600 hover:text-emerald-700 rounded border border-slate-200 disabled:opacity-20 transition"
+                                title="ย้ายไปขวา (เลื่อนลงถัดไป)"
+                              >
+                                <ChevronRight className="w-3 h-3" />
+                              </button>
+                            </div>
+                            <span className="text-[9px] text-slate-400 font-mono">ลำดับที่ {idx + 1}</span>
+                          </div>
+
                           <input 
                             type="text" 
                             placeholder="คำบรรยายภาพ..."
@@ -398,7 +523,7 @@ export default function NewsFormModal({
                                 return { ...prev, gallery_images: updated };
                               });
                             }}
-                            className="w-full text-[10px] p-1 border border-slate-200 rounded-lg bg-slate-50 focus:outline-none"
+                            className="w-full text-[10px] p-1 border border-slate-200 rounded-lg bg-slate-50 focus:outline-none focus:border-emerald-500"
                           />
 
                           <div className="flex gap-1">

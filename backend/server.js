@@ -1,5 +1,7 @@
 const express = require('express');
 const cors = require('cors');
+const fs = require('fs');
+const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 5001;
 
@@ -446,6 +448,44 @@ let summaryData = {
   wef_initiative_member: true
 };
 
+// Disk Persistence for local mock backend
+const DATA_FILE = path.join(__dirname, 'data_store.json');
+
+function saveDataStore() {
+  try {
+    const payload = {
+      projects,
+      activities,
+      cmsArticles,
+      summaryData
+    };
+    fs.writeFileSync(DATA_FILE, JSON.stringify(payload, null, 2), 'utf-8');
+  } catch (err) {
+    console.error('Error saving data_store.json:', err);
+  }
+}
+
+function loadDataStore() {
+  try {
+    if (fs.existsSync(DATA_FILE)) {
+      const raw = fs.readFileSync(DATA_FILE, 'utf-8');
+      const data = JSON.parse(raw);
+      if (Array.isArray(data.projects)) projects = data.projects;
+      if (Array.isArray(data.activities)) activities = data.activities;
+      if (Array.isArray(data.cmsArticles)) cmsArticles = data.cmsArticles;
+      if (data.summaryData && typeof data.summaryData === 'object') summaryData = data.summaryData;
+      console.log('Successfully loaded persistent data from data_store.json');
+      return;
+    }
+  } catch (err) {
+    console.error('Error loading data_store.json:', err);
+  }
+  // If data_store.json does not exist yet, write initial seeded data to it
+  saveDataStore();
+}
+
+loadDataStore();
+
 app.get('/api/v1/summary', (req, res) => {
   const calculatedBudget = projects.reduce((sum, p) => sum + Number(p.budget_baht || 0), 0);
   res.json({
@@ -470,6 +510,7 @@ app.put('/api/v1/summary', (req, res) => {
     agri_target_rai: req.body.agri_target_rai !== undefined ? Number(req.body.agri_target_rai) : summaryData.agri_target_rai,
     agri_current_rai: req.body.agri_current_rai !== undefined ? Number(req.body.agri_current_rai) : summaryData.agri_current_rai,
   };
+  saveDataStore();
   res.json(summaryData);
 });
 
@@ -519,7 +560,7 @@ app.post('/api/v1/projects', (req, res) => {
   }
 
   const newProject = {
-    id: projects.length + 1,
+    id: projects.length > 0 ? Math.max(...projects.map(p => p.id)) + 1 : 1,
     name,
     dimension_id: Number(dimension_id),
     dimension_name,
@@ -534,6 +575,7 @@ app.post('/api/v1/projects', (req, res) => {
   };
 
   projects.push(newProject);
+  saveDataStore();
   res.status(201).json(newProject);
 });
 
@@ -542,6 +584,7 @@ app.put('/api/v1/projects/:id', (req, res) => {
   const idx = projects.findIndex(p => p.id === id);
   if (idx !== -1) {
     projects[idx] = { ...projects[idx], ...req.body, id };
+    saveDataStore();
     return res.json(projects[idx]);
   }
   res.status(404).json({ error: 'Project not found' });
@@ -552,6 +595,7 @@ app.delete('/api/v1/projects/:id', (req, res) => {
   const idx = projects.findIndex(p => p.id === id);
   if (idx !== -1) {
     const deleted = projects.splice(idx, 1);
+    saveDataStore();
     return res.json(deleted[0]);
   }
   res.status(404).json({ error: 'Project not found' });
@@ -600,6 +644,7 @@ app.post('/api/v1/cms', (req, res) => {
   };
 
   cmsArticles.push(newArticle);
+  saveDataStore();
   res.status(201).json(newArticle);
 });
 
@@ -615,6 +660,7 @@ app.put('/api/v1/cms/:id', (req, res) => {
       updated_at: new Date().toISOString()
     };
     cmsArticles[idx] = updated;
+    saveDataStore();
     return res.json(cmsArticles[idx]);
   }
   res.status(404).json({ error: 'Article not found' });
@@ -625,6 +671,7 @@ app.delete('/api/v1/cms/:id', (req, res) => {
   const idx = cmsArticles.findIndex(c => c.id === id);
   if (idx !== -1) {
     const deleted = cmsArticles.splice(idx, 1);
+    saveDataStore();
     return res.json(deleted[0]);
   }
   res.status(404).json({ error: 'Article not found' });
@@ -647,7 +694,7 @@ app.post('/api/v1/activities', (req, res) => {
   }
 
   const newActivity = {
-    id: activities.length + 1,
+    id: activities.length > 0 ? Math.max(...activities.map(a => a.id)) + 1 : 1,
     project_id: Number(project_id),
     title,
     location,
@@ -663,6 +710,7 @@ app.post('/api/v1/activities', (req, res) => {
   // Dynamically update the associated project's current progress value
   proj.current_value = Math.min(proj.target_value, Number(proj.current_value) + Number(carbon_saved_co2e || 0) * 0.01); // Mocked progress step
   
+  saveDataStore();
   res.status(201).json(newActivity);
 });
 
@@ -671,6 +719,7 @@ app.put('/api/v1/activities/:id', (req, res) => {
   const idx = activities.findIndex(a => a.id === id);
   if (idx !== -1) {
     activities[idx] = { ...activities[idx], ...req.body, id };
+    saveDataStore();
     return res.json(activities[idx]);
   }
   res.status(404).json({ error: 'Activity not found' });
@@ -681,6 +730,7 @@ app.delete('/api/v1/activities/:id', (req, res) => {
   const idx = activities.findIndex(a => a.id === id);
   if (idx !== -1) {
     const deleted = activities.splice(idx, 1);
+    saveDataStore();
     return res.json(deleted[0]);
   }
   res.status(404).json({ error: 'Activity not found' });

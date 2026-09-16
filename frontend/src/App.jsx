@@ -106,11 +106,77 @@ export default function App() {
   const [loginError, setLoginError] = useState('');
   const [isKeycloakLoading, setIsKeycloakLoading] = useState(false);
   
-  // Real-time API States with resilient fallback initial data
-  const [projectsData, setProjectsData] = useState(initialProjects);
-  const [cmsData, setCmsData] = useState(initialCmsArticles);
-  const [activitiesData, setActivitiesData] = useState(initialActivities);
-  const [summaryData, setSummaryData] = useState(initialSummaryData);
+  // Real-time API States with persistent localStorage and resilient fallback
+  const [projectsData, setProjectsData] = useState(() => {
+    try {
+      const stored = localStorage.getItem('sb_projects_data');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {}
+    return initialProjects;
+  });
+
+  const [cmsData, setCmsData] = useState(() => {
+    try {
+      const stored = localStorage.getItem('sb_cms_data');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {}
+    return initialCmsArticles;
+  });
+
+  const [activitiesData, setActivitiesData] = useState(() => {
+    try {
+      const stored = localStorage.getItem('sb_activities_data');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {}
+    return initialActivities;
+  });
+
+  const [summaryData, setSummaryData] = useState(() => {
+    try {
+      const stored = localStorage.getItem('sb_summary_data');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed && typeof parsed === 'object') return parsed;
+      }
+    } catch (e) {}
+    return initialSummaryData;
+  });
+
+  // Persistent localStorage Sync Effects (survives refresh even if backend is offline)
+  useEffect(() => {
+    try {
+      localStorage.setItem('sb_cms_data', JSON.stringify(cmsData));
+    } catch (e) {
+      console.warn("localStorage quota exceeded for cmsData", e);
+    }
+  }, [cmsData]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('sb_summary_data', JSON.stringify(summaryData));
+    } catch (e) {}
+  }, [summaryData]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('sb_projects_data', JSON.stringify(projectsData));
+    } catch (e) {}
+  }, [projectsData]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('sb_activities_data', JSON.stringify(activitiesData));
+    } catch (e) {}
+  }, [activitiesData]);
   
   // Form Submission Modals
   const [showAddProjectModal, setShowAddProjectModal] = useState(false);
@@ -193,6 +259,7 @@ export default function App() {
 
   // Handler to update dynamic summary metrics
   const handleUpdateSummary = async (payload) => {
+    setSummaryData(prev => ({ ...prev, ...payload }));
     try {
       const res = await fetch('/api/v1/summary', {
         method: 'PUT',
@@ -202,12 +269,8 @@ export default function App() {
       if (res.ok) {
         const updated = await res.json();
         setSummaryData(updated);
-      } else {
-        setSummaryData(prev => ({ ...prev, ...payload }));
       }
-    } catch (err) {
-      setSummaryData(prev => ({ ...prev, ...payload }));
-    }
+    } catch (err) {}
   };
 
   useEffect(() => {
@@ -359,10 +422,21 @@ export default function App() {
       5: 'Green Areas & Community Forests',
       6: 'Transport & Logistics'
     };
+    const tempId = Date.now();
     const payload = {
       ...newProject,
+      id: tempId,
+      status: 'Planning',
+      current_value: 0,
       dimension_name: dimsMap[newProject.dimension_id]
     };
+    
+    // 1. Immediately store in local state (which syncs to localStorage)
+    setProjectsData(prev => [payload, ...prev]);
+    setShowAddProjectModal(false);
+    setNewProject({ name: '', dimension_id: 1, description: '', indicator: '', unit: '', target_value: 100, budget_baht: 1000000, agency: '' });
+
+    // 2. Sync to Backend API
     try {
       const res = await fetch('/api/v1/projects', {
         method: 'POST',
@@ -370,15 +444,10 @@ export default function App() {
         body: JSON.stringify(payload)
       });
       if (res.ok) {
-        fetchData();
-      } else {
-        setProjectsData(prev => [...prev, { ...payload, id: Date.now(), status: 'Planning', current_value: 0 }]);
+        const serverItem = await res.json();
+        setProjectsData(prev => prev.map(p => p.id === tempId ? serverItem : p));
       }
-    } catch (err) {
-      setProjectsData(prev => [...prev, { ...payload, id: Date.now(), status: 'Planning', current_value: 0 }]);
-    }
-    setShowAddProjectModal(false);
-    setNewProject({ name: '', dimension_id: 1, description: '', indicator: '', unit: '', target_value: 100, budget_baht: 1000000, agency: '' });
+    } catch (err) {}
   };
 
   const handlePostNews = async (formDataOrEvent) => {
@@ -388,6 +457,21 @@ export default function App() {
     } else if (formDataOrEvent && typeof formDataOrEvent === 'object') {
       payload = formDataOrEvent;
     }
+
+    const tempId = Date.now();
+    const newArticle = {
+      ...payload,
+      id: tempId,
+      created_at: new Date().toISOString(),
+      published_at: payload.published_at || new Date().toISOString()
+    };
+
+    // 1. Immediately store in local state (which syncs to localStorage)
+    setCmsData(prev => [newArticle, ...prev]);
+    setShowAddNewsModal(false);
+    setNewNews({ title: '', category: 'News', summary: '', content: '', author: '', image_url: '', gallery_images: [] });
+
+    // 2. Sync to Backend API
     try {
       const res = await fetch('/api/v1/cms', {
         method: 'POST',
@@ -395,31 +479,28 @@ export default function App() {
         body: JSON.stringify(payload)
       });
       if (res.ok) {
-        fetchData();
-      } else {
-        const fallbackArticle = {
-          ...payload,
-          id: Date.now(),
-          created_at: new Date().toISOString(),
-          published_at: payload.published_at || new Date().toISOString()
-        };
-        setCmsData(prev => [fallbackArticle, ...prev]);
+        const serverArticle = await res.json();
+        setCmsData(prev => prev.map(item => item.id === tempId ? serverArticle : item));
       }
     } catch (err) {
-      const fallbackArticle = {
-        ...payload,
-        id: Date.now(),
-        created_at: new Date().toISOString(),
-        published_at: payload.published_at || new Date().toISOString()
-      };
-      setCmsData(prev => [fallbackArticle, ...prev]);
+      console.warn("Backend API unavailable, article preserved in browser localStorage.", err);
     }
-    setShowAddNewsModal(false);
-    setNewNews({ title: '', category: 'News', summary: '', content: '', author: '', image_url: '', gallery_images: [] });
   };
 
   const handlePostActivity = async (e) => {
     e.preventDefault();
+    const tempId = Date.now();
+    const newAct = {
+      ...newActivity,
+      id: tempId
+    };
+
+    // 1. Immediately store in local state (which syncs to localStorage)
+    setActivitiesData(prev => [newAct, ...prev]);
+    setShowAddActivityModal(false);
+    setNewActivity({ project_id: 1, title: '', location: '', description: '', carbon_saved_co2e: 50, budget_spent_baht: 25000, activity_date: new Date().toISOString().split('T')[0] });
+
+    // 2. Sync to Backend API
     try {
       const res = await fetch('/api/v1/activities', {
         method: 'POST',
@@ -427,15 +508,10 @@ export default function App() {
         body: JSON.stringify(newActivity)
       });
       if (res.ok) {
-        fetchData();
-      } else {
-        setActivitiesData(prev => [...prev, { ...newActivity, id: Date.now() }]);
+        const serverAct = await res.json();
+        setActivitiesData(prev => prev.map(a => a.id === tempId ? serverAct : a));
       }
-    } catch (err) {
-      setActivitiesData(prev => [...prev, { ...newActivity, id: Date.now() }]);
-    }
-    setShowAddActivityModal(false);
-    setNewActivity({ project_id: 1, title: '', location: '', description: '', carbon_saved_co2e: 50, budget_spent_baht: 25000, activity_date: new Date().toISOString().split('T')[0] });
+    } catch (err) {}
   };
 
   // Helper for Power BI Endpoint Simulation
