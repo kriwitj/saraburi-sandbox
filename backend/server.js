@@ -4,7 +4,8 @@ const app = express();
 const PORT = process.env.PORT || 5001;
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // In-memory data store seeded with the database schema contents for mockup purposes
 let projects = [
@@ -297,12 +298,18 @@ let cmsArticles = [
     slug: 'saraburi-wef-announcement',
     category: 'News',
     summary: 'สมาคมอุตสาหกรรมปูนซีเมนต์ไทยร่วมกับภาครัฐและจังหวัดสระบุรีประกาศความก้าวหน้าการเป็นเมืองคาร์บอนต่ำแห่งแรกของไทยบนเวทีโลก',
-    content: 'สระบุรีแซนด์บ็อกซ์ได้เข้าร่วมเครือข่ายความร่วมมือ Transitioning Industrial Clusters ของ World Economic Forum (WEF) เพื่อแลกเปลี่ยนเทคโนโลยีและดึงดูดการลงทุนสีเขียวจากต่างประเทศ โดยตั้งเป้าหมายลดการปล่อยก๊าซเรือนกระจก 5 ล้านตัน CO2e ภายในปี 2027 ด้วยโมเดลความร่วมมือ 4Ps (Public-Private-People Partnership)',
-    image_url: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=800&q=80',
+    content: `<p>สระบุรีแซนด์บ็อกซ์ได้เข้าร่วมเครือข่ายความร่วมมือ <strong>Transitioning Industrial Clusters</strong> ของ World Economic Forum (WEF) เพื่อแลกเปลี่ยนเทคโนโลยีและดึงดูดการลงทุนสีเขียวจากต่างประเทศ โดยตั้งเป้าหมายลดการปล่อยก๊าซเรือนกระจก 5 ล้านตัน CO2e ภายในปี 2027 ด้วยโมเดลความร่วมมือ 4Ps (Public-Private-People Partnership)</p><h3>จุดเด่นของความร่วมมือระดับโลก</h3><p>โครงการนี้มุ่งเน้นการยกระดับอุตสาหกรรมปูนซีเมนต์และพลังงานสะอาดในพื้นที่จังหวัดสระบุรีให้เป็นต้นแบบสากล โดยประสานความร่วมมือระหว่างภาครัฐ เอกชน และสถาบันการศึกษาระดับโลก</p><blockquote>"สระบุรีแซนด์บ็อกซ์เป็นหนึ่งในตัวอย่างความสำเร็จของการร่วมมือ Area-based ที่ชัดเจนและนำไปสู่การปฏิบัติจริงในภูมิภาคอาเซียน"</blockquote><p>นอกจากนี้ ยังมีการผลักดันนวัตกรรมการใช้พลังงานแสงอาทิตย์ การนำขยะชุมชนมาแปรรูปเป็นพลังงานทดแทน (RDF) และการเพิ่มพื้นที่ป่าชุมชนเพื่อกักเก็บคาร์บอนอย่างยั่งยืน</p>`,
+    image_url: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=1200&q=80',
+    gallery_images: [
+      'https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=1200&q=80',
+      'https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?auto=format&fit=crop&w=1200&q=80',
+      'https://images.unsplash.com/photo-1513836279014-a89f7a76ae86?auto=format&fit=crop&w=1200&q=80'
+    ],
     author: 'แอดมินประชาสัมพันธ์',
     is_published: true,
-    created_at: '2026-07-01T08:00:00Z',
-    updated_at: '2026-07-01T08:00:00Z'
+    published_at: '2026-07-01T08:00:00.000Z',
+    created_at: '2026-07-01T08:00:00.000Z',
+    updated_at: '2026-07-01T08:00:00.000Z'
   },
   {
     id: 2,
@@ -310,12 +317,17 @@ let cmsArticles = [
     slug: 'saraburi-edible-carbon-market',
     category: 'Announcement',
     summary: 'แผนขับเคลื่อนปี 2569 เน้นเศรษฐกิจฐานรากจากการขายคาร์บอนเครดิตภาคเกษตรและป่าชุมชนให้ชาวบ้านสัมผัสได้จริง',
-    content: 'กระทรวงทรัพยากรธรรมชาติฯ ร่วมกับ TGO และจังหวัดสระบุรี นำร่องโครงการ "สระบุรีแซนด์บ็อกซ์กินได้" พัฒนากลไกการซื้อขายคาร์บอนเครดิตผ่านโครงการนาเปียกสลับแห้ง และระบบป่าชุมชน 45 แห่งในพื้นที่ เพื่อนำผลตอบแทนกลับคืนเป็นรายได้และสิทธิประโยชน์โดยตรงกับชุมชนในพื้นที่',
-    image_url: 'https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?auto=format&fit=crop&w=800&q=80',
+    content: `<p>กระทรวงทรัพยากรธรรมชาติฯ ร่วมกับ TGO และจังหวัดสระบุรี นำร่องโครงการ <strong>"สระบุรีแซนด์บ็อกซ์กินได้"</strong> พัฒนากลไกการซื้อขายคาร์บอนเครดิตผ่านโครงการนาเปียกสลับแห้ง (AWD) และระบบป่าชุมชน 45 แห่งในพื้นที่ เพื่อนำผลตอบแทนกลับคืนเป็นรายได้และสิทธิประโยชน์โดยตรงกับชุมชนในพื้นที่</p><h3>ประโยชน์ที่ชุมชนได้รับโดยตรง</h3><ul><li>รายได้เสริมจากการขายคาร์บอนเครดิตภาคการเกษตรและการฟื้นฟูป่า</li><li>การลดต้นทุนค่าน้ำมันและน้ำในการทำนาข้าวด้วยวิธี AWD</li><li>การสร้างแหล่งท่องเที่ยวเชิงอนุรักษ์และตลาดสินค้าคาร์บอนต่ำในชุมชน</li></ul><p>โดยมีเป้าหมายขยายผลให้ครอบคลุมพื้นที่เกษตรกรรม 50,000 ไร่ และป่าชุมชน 15,000 ไร่ ทั่วจังหวัดสระบุรี</p>`,
+    image_url: 'https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?auto=format&fit=crop&w=1200&q=80',
+    gallery_images: [
+      'https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?auto=format&fit=crop&w=1200&q=80',
+      'https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=1200&q=80'
+    ],
     author: 'แอดมินประชาสัมพันธ์',
     is_published: true,
-    created_at: '2026-07-15T10:30:00Z',
-    updated_at: '2026-07-15T10:30:00Z'
+    published_at: '2026-07-15T10:30:00.000Z',
+    created_at: '2026-07-15T10:30:00.000Z',
+    updated_at: '2026-07-15T10:30:00.000Z'
   }
 ];
 
@@ -412,24 +424,53 @@ app.get('/api/v1/transport-logistics', (req, res) => {
 });
 
 // Overall Summary Statistics for Platform Landing Page
-app.get('/api/v1/summary', (req, res) => {
-  const totalBudget = projects.reduce((sum, p) => sum + Number(p.budget_baht), 0);
-  const totalCarbonSaved = 2170000; // Tons CO2e accumulated
-  const targetCarbonReduction = 5000000; // Tons CO2e by 2027
+let summaryData = {
+  gpp_gdp_saraburi_thb: '245,000,000,000',
+  cement_production_pct_national: 80,
+  national_ghg_emissions_rank: 3,
+  reduction_target_tons_co2e: 5000000,
+  current_reduced_tons_co2e: 3250000,
+  target_year: 2027,
+  total_projects: 17,
+  active_projects: 15,
+  pilot_areas_target: 38,
+  pilot_areas_current: 26,
+  core_dimensions_target: 6,
+  core_dimensions_current: 6,
+  forest_target_rai: 15000,
+  forest_current_rai: 10500,
+  agri_target_rai: 50000,
+  agri_current_rai: 28500,
+  total_budget_baht: 367000000,
+  partnership_model: '4Ps (Public-Private-People Partnership)',
+  wef_initiative_member: true
+};
 
+app.get('/api/v1/summary', (req, res) => {
+  const calculatedBudget = projects.reduce((sum, p) => sum + Number(p.budget_baht || 0), 0);
   res.json({
-    gpp_gdp_saraburi_thb: '245,000,000,000',
-    cement_production_pct_national: 80,
-    national_ghg_emissions_rank: 3,
-    reduction_target_tons_co2e: targetCarbonReduction,
-    current_reduced_tons_co2e: totalCarbonSaved,
-    target_year: 2027,
-    total_projects: projects.length,
-    active_projects: projects.filter(p => p.status === 'In Progress').length,
-    total_budget_baht: totalBudget,
-    partnership_model: '4Ps (Public-Private-People Partnership)',
-    wef_initiative_member: true
+    ...summaryData,
+    total_projects: projects.length || summaryData.total_projects,
+    active_projects: projects.filter(p => p.status === 'In Progress').length || summaryData.active_projects,
+    total_budget_baht: calculatedBudget || summaryData.total_budget_baht
   });
+});
+
+app.put('/api/v1/summary', (req, res) => {
+  summaryData = {
+    ...summaryData,
+    ...req.body,
+    reduction_target_tons_co2e: req.body.reduction_target_tons_co2e !== undefined ? Number(req.body.reduction_target_tons_co2e) : summaryData.reduction_target_tons_co2e,
+    current_reduced_tons_co2e: req.body.current_reduced_tons_co2e !== undefined ? Number(req.body.current_reduced_tons_co2e) : summaryData.current_reduced_tons_co2e,
+    target_year: req.body.target_year !== undefined ? Number(req.body.target_year) : summaryData.target_year,
+    pilot_areas_target: req.body.pilot_areas_target !== undefined ? Number(req.body.pilot_areas_target) : summaryData.pilot_areas_target,
+    pilot_areas_current: req.body.pilot_areas_current !== undefined ? Number(req.body.pilot_areas_current) : summaryData.pilot_areas_current,
+    forest_target_rai: req.body.forest_target_rai !== undefined ? Number(req.body.forest_target_rai) : summaryData.forest_target_rai,
+    forest_current_rai: req.body.forest_current_rai !== undefined ? Number(req.body.forest_current_rai) : summaryData.forest_current_rai,
+    agri_target_rai: req.body.agri_target_rai !== undefined ? Number(req.body.agri_target_rai) : summaryData.agri_target_rai,
+    agri_current_rai: req.body.agri_current_rai !== undefined ? Number(req.body.agri_current_rai) : summaryData.agri_current_rai,
+  };
+  res.json(summaryData);
 });
 
 // Authentication Endpoints
@@ -518,25 +559,42 @@ app.delete('/api/v1/projects/:id', (req, res) => {
 
 // CMS Blog Endpoints
 app.get('/api/v1/cms', (req, res) => {
-  res.json(cmsArticles);
+  // Return articles sorted by published_at or created_at descending
+  const sorted = [...cmsArticles].sort((a, b) => {
+    const dateA = new Date(a.published_at || a.created_at).getTime();
+    const dateB = new Date(b.published_at || b.created_at).getTime();
+    return dateB - dateA;
+  });
+  res.json(sorted);
+});
+
+app.get('/api/v1/cms/:id', (req, res) => {
+  const param = req.params.id;
+  const article = cmsArticles.find(c => c.id === Number(param) || c.slug === param);
+  if (article) {
+    return res.json(article);
+  }
+  res.status(404).json({ error: 'Article not found' });
 });
 
 app.post('/api/v1/cms', (req, res) => {
-  const { title, category, summary, content, image_url, author } = req.body;
+  const { title, category, summary, content, image_url, gallery_images, author, published_at } = req.body;
   if (!title || !content || !category) {
     return res.status(400).json({ error: 'Missing required CMS fields.' });
   }
 
   const newArticle = {
-    id: cmsArticles.length + 1,
+    id: cmsArticles.length > 0 ? Math.max(...cmsArticles.map(c => c.id)) + 1 : 1,
     title,
-    slug: title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, ''),
+    slug: title.toLowerCase().replace(/[^a-z0-9\u0E00-\u0E7F]+/g, '-').replace(/(^-|-$)+/g, '') || `news-${Date.now()}`,
     category,
     summary,
     content,
-    image_url: image_url || 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=800&q=80',
+    image_url: image_url || (gallery_images && gallery_images.length > 0 ? (typeof gallery_images[0] === 'string' ? gallery_images[0] : gallery_images[0].url) : 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=800&q=80'),
+    gallery_images: gallery_images || [],
     author: author || 'Admin',
     is_published: true,
+    published_at: published_at ? new Date(published_at).toISOString() : new Date().toISOString(),
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString()
   };
@@ -549,7 +607,14 @@ app.put('/api/v1/cms/:id', (req, res) => {
   const id = Number(req.params.id);
   const idx = cmsArticles.findIndex(c => c.id === id);
   if (idx !== -1) {
-    cmsArticles[idx] = { ...cmsArticles[idx], ...req.body, id };
+    const updated = {
+      ...cmsArticles[idx],
+      ...req.body,
+      id,
+      published_at: req.body.published_at ? new Date(req.body.published_at).toISOString() : cmsArticles[idx].published_at,
+      updated_at: new Date().toISOString()
+    };
+    cmsArticles[idx] = updated;
     return res.json(cmsArticles[idx]);
   }
   res.status(404).json({ error: 'Article not found' });

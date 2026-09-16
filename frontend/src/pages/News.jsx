@@ -1,20 +1,28 @@
 import React, { useState } from 'react';
-import { Calendar, User, Newspaper, CalendarDays } from 'lucide-react';
+import { Calendar, User, Newspaper, CalendarDays, Images, ArrowRight } from 'lucide-react';
 
 export default function News({
-  cmsData,
+  cmsData = [],
   showNewsModal,
-  setShowNewsModal
+  setShowNewsModal,
+  navigateToNewsDetail
 }) {
   const [activeCategory, setActiveCategory] = useState('all');
 
-  const filteredNews = cmsData.filter(news => {
+  // Sort articles by published_at (or created_at) descending
+  const sortedArticles = [...cmsData].sort((a, b) => {
+    const dateA = new Date(a.published_at || a.created_at || 0).getTime();
+    const dateB = new Date(b.published_at || b.created_at || 0).getTime();
+    return dateB - dateA;
+  });
+
+  const filteredNews = sortedArticles.filter(news => {
     if (activeCategory === 'all') return true;
     return news.category === activeCategory;
   });
 
   return (
-    <section className="py-16 px-6 lg:px-12 max-w-7xl mx-auto w-full space-y-10">
+    <section className="py-16 px-6 lg:px-12 max-w-7xl mx-auto w-full space-y-10 animate-in fade-in duration-200">
       
       {/* Header section */}
       <div className="text-center space-y-2">
@@ -27,46 +35,24 @@ export default function News({
 
       {/* Category filters */}
       <div className="flex flex-wrap gap-2 justify-center border-b border-slate-200 pb-5 text-xs">
-        <button
-          onClick={() => setActiveCategory('all')}
-          className={`px-4 py-2 rounded-xl font-bold transition ${
-            activeCategory === 'all' 
-              ? 'bg-emerald-600 text-white shadow-sm' 
-              : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
-          }`}
-        >
-          ทั้งหมด
-        </button>
-        <button
-          onClick={() => setActiveCategory('News')}
-          className={`px-4 py-2 rounded-xl font-bold transition ${
-            activeCategory === 'News' 
-              ? 'bg-emerald-600 text-white shadow-sm' 
-              : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
-          }`}
-        >
-          ข่าวประชาสัมพันธ์
-        </button>
-        <button
-          onClick={() => setActiveCategory('Activity')}
-          className={`px-4 py-2 rounded-xl font-bold transition ${
-            activeCategory === 'Activity' 
-              ? 'bg-emerald-600 text-white shadow-sm' 
-              : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
-          }`}
-        >
-          ภาพกิจกรรมย่อย
-        </button>
-        <button
-          onClick={() => setActiveCategory('Announcement')}
-          className={`px-4 py-2 rounded-xl font-bold transition ${
-            activeCategory === 'Announcement' 
-              ? 'bg-emerald-600 text-white shadow-sm' 
-              : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
-          }`}
-        >
-          ประกาศ/ข่าวสาร
-        </button>
+        {[
+          { key: 'all', label: 'ทั้งหมด' },
+          { key: 'News', label: 'ข่าวประชาสัมพันธ์' },
+          { key: 'Activity', label: 'ภาพกิจกรรมย่อย' },
+          { key: 'Announcement', label: 'ประกาศ/ข่าวสาร' }
+        ].map(tab => (
+          <button
+            key={tab.key}
+            onClick={() => setActiveCategory(tab.key)}
+            className={`px-4 py-2 rounded-xl font-bold transition ${
+              activeCategory === tab.key 
+                ? 'bg-emerald-600 text-white shadow-sm' 
+                : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
 
       {/* Grid: News lists */}
@@ -76,43 +62,74 @@ export default function News({
             ไม่พบข่าวสารหรือภาพกิจกรรมในหมวดหมู่นี้
           </div>
         ) : (
-          filteredNews.map(news => (
-            <article 
-              key={news.id} 
-              className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm flex flex-col hover:border-emerald-500/20 hover:shadow-md transition duration-300"
-            >
-              <img 
-                src={news.image_url || 'https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=600&q=80'} 
-                alt={news.title} 
-                className="w-full h-48 object-cover border-b border-slate-100" 
-              />
-              <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-1.5 text-[10px] text-slate-400 font-mono font-bold uppercase">
-                    <CalendarDays className="w-3.5 h-3.5 text-slate-400" />
-                    <span>{new Date(news.created_at).toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' })}</span>
-                    <span>•</span>
-                    <span className="text-emerald-600 font-extrabold">{news.category}</span>
+          filteredNews.map(news => {
+            const pubDate = new Date(news.published_at || news.created_at || Date.now());
+            const formattedDate = pubDate.toLocaleDateString('th-TH', { 
+              year: 'numeric', 
+              month: 'short', 
+              day: 'numeric' 
+            });
+            const formattedTime = pubDate.toLocaleTimeString('th-TH', {
+              hour: '2-digit',
+              minute: '2-digit'
+            });
+            const galleryCount = news.gallery_images?.length || 0;
+
+            return (
+              <article 
+                key={news.id} 
+                onClick={() => navigateToNewsDetail ? navigateToNewsDetail(news.id) : setShowNewsModal(news)}
+                className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm flex flex-col hover:border-emerald-500/30 hover:shadow-md transition duration-300 cursor-pointer group"
+              >
+                <div className="relative">
+                  <img 
+                    src={news.image_url || 'https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=600&q=80'} 
+                    alt={news.title} 
+                    className="w-full h-48 object-cover border-b border-slate-100 group-hover:scale-102 transition duration-300" 
+                  />
+                  {galleryCount > 0 && (
+                    <div className="absolute top-3 right-3 bg-slate-950/70 backdrop-blur-sm text-white px-2 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 shadow-sm">
+                      <Images className="w-3 h-3 text-emerald-400" />
+                      <span>{galleryCount} รูป</span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
+                  <div className="space-y-2.5">
+                    <div className="flex items-center gap-1.5 text-[10px] text-slate-400 font-mono font-bold">
+                      <CalendarDays className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>{formattedDate}</span>
+                      <span>•</span>
+                      <span className="text-slate-400">{formattedTime} น.</span>
+                      <span>•</span>
+                      <span className="text-emerald-600 font-extrabold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">
+                        {news.category}
+                      </span>
+                    </div>
+
+                    <h3 className="text-xs md:text-sm font-bold text-slate-800 leading-snug line-clamp-2 group-hover:text-emerald-600 transition">
+                      {news.title}
+                    </h3>
+
+                    <p className="text-[11px] text-slate-500 leading-relaxed line-clamp-3">
+                      {news.summary}
+                    </p>
                   </div>
-                  <h4 className="text-xs font-bold text-slate-800 leading-normal line-clamp-2 hover:text-emerald-600 cursor-pointer" onClick={() => setShowNewsModal(news)}>
-                    {news.title}
-                  </h4>
-                  <p className="text-[10px] text-slate-500 leading-relaxed line-clamp-3">
-                    {news.summary}
-                  </p>
+
+                  <div className="flex justify-between items-center pt-3 border-t border-slate-100 text-[10px]">
+                    <span className="flex items-center gap-1 text-slate-400">
+                      <User className="w-3 h-3 text-slate-400" /> 
+                      <span>{news.author || 'แอดมิน'}</span>
+                    </span>
+                    <span className="text-emerald-600 font-bold inline-flex items-center gap-1 group-hover:translate-x-0.5 transition">
+                      อ่านฉบับเต็ม <ArrowRight className="w-3.5 h-3.5" />
+                    </span>
+                  </div>
                 </div>
-                <div className="flex justify-between items-center pt-3 border-t border-slate-100 text-[9px] text-slate-400">
-                  <span className="flex items-center gap-1"><User className="w-3 h-3 text-slate-400" /> ผู้เขียน: {news.author}</span>
-                  <button 
-                    onClick={() => setShowNewsModal(news)}
-                    className="text-emerald-605 font-bold hover:underline"
-                  >
-                    อ่านรายละเอียดเพิ่มเติม
-                  </button>
-                </div>
-              </div>
-            </article>
-          ))
+              </article>
+            );
+          })
         )}
       </div>
 

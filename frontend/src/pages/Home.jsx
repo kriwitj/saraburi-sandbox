@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { 
   Eye, CheckCircle2, Leaf, Building2, Users, Trash2, MapPin, ChevronDown, ChevronRight,
-  Folder, Layers, Flame, Sprout, Trees, Truck, Search, Plus, Minus, Compass, HelpCircle
+  Folder, Layers, Flame, Sprout, Trees, Truck, Search, Plus, Minus, Compass, HelpCircle, ArrowUp
 } from 'lucide-react';
 
 const PARTNERS = [
@@ -61,7 +61,8 @@ export default function Home({
   filteredPins,
   DISTRICTS,
   MAP_DIMENSIONS,
-  DIMENSION_DETAILS
+  DIMENSION_DETAILS,
+  navigateToNewsDetail
 }) {
   const [mapCategory, setMapCategory] = useState('station'); // 'station', 'district', 'pillar'
   const [searchQuery, setSearchQuery] = useState('');
@@ -249,7 +250,19 @@ export default function Home({
       mapInstanceRef.current.setView([14.62, 100.86], 9.2);
     }
   };
+  const [showGoToTop, setShowGoToTop] = React.useState(false);
 
+  React.useEffect(() => {
+    const handleScroll = () => {
+      setShowGoToTop(window.scrollY > 400);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
   React.useEffect(() => {
     const observerOptions = {
       root: null,
@@ -326,42 +339,78 @@ export default function Home({
           </div>
 
           <div className="flex items-center justify-center lg:col-span-5">
-            <div className="relative flex items-center justify-center p-4 border rounded-full shadow-md w-80 h-80 bg-[#061814]/85 border-emerald-950/20 backdrop-blur-md">
+            {/* UI/UX Pattern 2: Circular Progress Ring with Current Status in Center & Target Subtext */}
+            <div className="relative flex items-center justify-center p-6 border rounded-full shadow-2xl w-80 h-80 bg-[#061814]/90 border-emerald-950/30 backdrop-blur-md">
               <div className="absolute inset-0 rounded-full border-4 border-dashed border-emerald-500/10 animate-[spin_60s_linear_infinite]" />
-              <svg viewBox="0 0 100 100" className="absolute w-full h-full -rotate-90">
-                <circle cx="50" cy="50" r="42" fill="none" stroke="rgba(16, 185, 129, 0.05)" strokeWidth="5" />
-                <circle 
-                  cx="50" 
-                  cy="50" 
-                  r="42" 
-                  fill="none" 
-                  stroke="#34d399" 
-                  strokeWidth="5" 
-                  strokeDasharray="264" 
-                  strokeDashoffset={264 - (264 * (summaryData.current_reduced_tons_co2e / 5000000))} 
-                  strokeLinecap="round"
-                  className="drop-shadow-[0_0_8px_rgba(52,211,153,0.4)]" 
-                />
-              </svg>
+              
+              {/* Progress Ring SVG */}
+              {(() => {
+                const currentCarbon = Number(summaryData?.current_reduced_tons_co2e ?? 3250000);
+                const targetCarbon = Number(summaryData?.reduction_target_tons_co2e ?? 5000000);
+                const carbonPct = Math.min(100, Math.round((currentCarbon / targetCarbon) * 100)) || 65;
+                const currentCarbonM = (currentCarbon / 1000000).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                const targetCarbonM = (targetCarbon / 1000000).toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+                const targetYear = summaryData?.target_year || 2027;
 
-              <div className="z-10 space-y-1 text-center">
-                <span className="block text-xs font-semibold text-slate-400">เป้าหมายลดการปล่อย</span>
-                <span className="block font-mono text-6xl font-black tracking-tight text-white">5</span>
-                <span className="block text-sm font-bold text-slate-200">ล้านตัน CO₂e</span>
-                <span className="block font-mono text-xs font-medium text-emerald-400">ภายในปี {summaryData.target_year}</span>
-              </div>
+                return (
+                  <>
+                    <svg viewBox="0 0 100 100" className="absolute w-full h-full -rotate-90">
+                      <circle cx="50" cy="50" r="42" fill="none" stroke="rgba(16, 185, 129, 0.12)" strokeWidth="6" />
+                      <circle 
+                        cx="50" 
+                        cy="50" 
+                        r="42" 
+                        fill="none" 
+                        stroke="url(#emeraldGradient)" 
+                        strokeWidth="6" 
+                        strokeDasharray="264" 
+                        strokeDashoffset={264 - (264 * (carbonPct / 100))} 
+                        strokeLinecap="round"
+                        className="drop-shadow-[0_0_12px_rgba(52,211,153,0.5)] transition-all duration-1000 ease-out" 
+                      />
+                      <defs>
+                        <linearGradient id="emeraldGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <stop offset="0%" stopColor="#10b981" />
+                          <stop offset="100%" stopColor="#34d399" />
+                        </linearGradient>
+                      </defs>
+                    </svg>
 
-              <div className="absolute p-2 bg-[#09221d] border rounded-full shadow-sm top-4 border-emerald-950/20 text-emerald-400 shadow-emerald-900/10">
-                <Leaf className="w-5 h-5" />
+                    {/* Center Content: Current Status & Target subtext */}
+                    <div className="z-10 space-y-1.5 text-center px-4">
+                      <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                        สถานะลดก๊าซสะสมปัจจุบัน
+                      </span>
+                      <div className="flex items-baseline justify-center gap-1">
+                        <span className="font-mono text-5xl md:text-6xl font-black tracking-tight text-white drop-shadow-[0_0_20px_rgba(52,211,153,0.3)]">
+                          {currentCarbonM}
+                        </span>
+                      </div>
+                      <div className="flex flex-col items-center gap-1">
+                        <span className="text-xs font-bold text-slate-200">
+                          ล้านตัน CO₂e <span className="text-emerald-400 font-extrabold">({carbonPct}%)</span>
+                        </span>
+                        <span className="font-mono text-[10px] text-emerald-300/80 bg-emerald-950/60 px-2.5 py-0.5 rounded-full border border-emerald-800/40">
+                          (จากเป้าหมาย {targetCarbonM} ล้านตัน ภายในปี {targetYear})
+                        </span>
+                      </div>
+                    </div>
+                  </>
+                );
+              })()}
+
+              {/* Floating Dimension Badges */}
+              <div className="absolute p-2 bg-[#09221d] border rounded-full shadow-sm top-3 border-emerald-950/20 text-emerald-400 shadow-emerald-900/10" title="สิ่งแวดล้อมและป่าไม้">
+                <Leaf className="w-4 h-4" />
               </div>
-              <div className="absolute p-2 text-blue-400 bg-[#09221d] border rounded-full shadow-sm right-4 border-emerald-950/20 shadow-blue-900/10">
-                <Building2 className="w-5 h-5" />
+              <div className="absolute p-2 text-blue-400 bg-[#09221d] border rounded-full shadow-sm right-3 border-emerald-950/20 shadow-blue-900/10" title="อุตสาหกรรมสีเขียว">
+                <Building2 className="w-4 h-4" />
               </div>
-              <div className="absolute p-2 text-purple-400 bg-[#09221d] border rounded-full shadow-sm bottom-4 border-emerald-950/20 shadow-purple-900/10">
-                <Users className="w-5 h-5" />
+              <div className="absolute p-2 text-purple-400 bg-[#09221d] border rounded-full shadow-sm bottom-3 border-emerald-950/20 shadow-purple-900/10" title="ภาคประชาสังคม">
+                <Users className="w-4 h-4" />
               </div>
-              <div className="absolute p-2 bg-[#09221d] border rounded-full shadow-sm left-4 border-emerald-950/20 text-amber-400 shadow-amber-900/10">
-                <Trash2 className="w-5 h-5" />
+              <div className="absolute p-2 bg-[#09221d] border rounded-full shadow-sm left-3 border-emerald-950/20 text-amber-400 shadow-amber-900/10" title="เศรษฐกิจหมุนเวียน">
+                <Trash2 className="w-4 h-4" />
               </div>
             </div>
           </div>
@@ -369,40 +418,184 @@ export default function Home({
         </div>
       </section>
 
-{/* TOP METRICS OVERLAY ROW */}
+      {/* TOP METRICS OVERLAY ROW (Patterns 1 & 3: Current vs Target Cards + Dual-Metric Comparison) */}
       <section className="relative z-30 w-full px-6 mx-auto -mt-16 lg:px-12 max-w-7xl scroll-reveal">
-        <div className="bg-[#051c18]/90 backdrop-blur-xl border border-emerald-900/30 rounded-3xl p-6 shadow-lg grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6 divide-y md:divide-y-0 lg:divide-x divide-emerald-900/40">
-          <div className="py-3 space-y-1 text-center lg:py-0">
-            <strong className="font-mono text-xl font-black md:text-2xl text-emerald-400">5,000,000</strong>
-            <span className="block text-xs font-bold text-emerald-100">ตัน CO₂e</span>
-            <span className="text-[10px] text-emerald-300 block">เป้าหมายปี 2027</span>
-          </div>
-          <div className="py-3 space-y-1 text-center lg:py-0">
-            <strong className="font-mono text-xl font-black text-white md:text-2xl">{projectsData.length || summaryData.total_projects}</strong>
-            <span className="block text-xs font-bold text-emerald-100">โครงการยุทธศาสตร์</span>
-            <span className="text-[10px] text-emerald-300 block">ครอบคลุม 6 มิติ</span>
-          </div>
-          <div className="py-3 space-y-1 text-center lg:py-0">
-            <strong className="font-mono text-xl font-black text-white md:text-2xl">38</strong>
-            <span className="block text-xs font-bold text-emerald-100">พื้นที่นำร่อง</span>
-            <span className="text-[10px] text-emerald-300 block">ทั่วจังหวัดสระบุรี</span>
-          </div>
-          <div className="py-3 space-y-1 text-center lg:py-0">
-            <strong className="font-mono text-xl font-black text-white md:text-2xl">6</strong>
-            <span className="block text-xs font-bold text-emerald-100">มิติหลัก</span>
-            <span className="text-[10px] text-emerald-300 block">การพัฒนาคาร์บอนต่ำ</span>
-          </div>
-          <div className="py-3 space-y-1 text-center lg:py-0">
-            <strong className="font-mono text-xl font-black text-white md:text-2xl">15,000 ไร่</strong>
-            <span className="block text-xs font-bold text-emerald-100">เป้าหมายป่าชุมชน</span>
-            <span className="text-[10px] text-emerald-300 block">ฟื้นฟูเหมืองเก่า</span>
-          </div>
-          <div className="py-3 space-y-1 text-center lg:py-0">
-            <strong className="font-mono text-xl font-black md:text-2xl text-emerald-400">50,000 ไร่</strong>
-            <span className="block text-xs font-bold text-emerald-100">เกษตรคาร์บอนต่ำ</span>
-            <span className="text-[10px] text-emerald-300 block">(ทำนาเปียกสลับแห้ง)</span>
-          </div>
-        </div>
+        {(() => {
+          const currentCarbon = Number(summaryData?.current_reduced_tons_co2e ?? 3250000);
+          const targetCarbon = Number(summaryData?.reduction_target_tons_co2e ?? 5000000);
+          const carbonPct = Math.min(100, Math.round((currentCarbon / targetCarbon) * 100)) || 65;
+          const targetYear = summaryData?.target_year || 2027;
+
+          const totalProjects = Number(summaryData?.total_projects ?? projectsData.length ?? 17);
+          const activeProjects = Number(summaryData?.active_projects ?? projectsData.filter(p => p.status === 'In Progress').length ?? 15);
+          const projectsPct = Math.min(100, Math.round((activeProjects / totalProjects) * 100)) || 88;
+
+          const pilotTarget = Number(summaryData?.pilot_areas_target ?? 38);
+          const pilotCurrent = Number(summaryData?.pilot_areas_current ?? 26);
+          const pilotPct = Math.min(100, Math.round((pilotCurrent / pilotTarget) * 100)) || 68;
+
+          const dimTarget = Number(summaryData?.core_dimensions_target ?? 6);
+          const dimCurrent = Number(summaryData?.core_dimensions_current ?? 6);
+          const dimPct = Math.min(100, Math.round((dimCurrent / dimTarget) * 100)) || 100;
+
+          const forestTarget = Number(summaryData?.forest_target_rai ?? 15000);
+          const forestCurrent = Number(summaryData?.forest_current_rai ?? 10500);
+          const forestPct = Math.min(100, Math.round((forestCurrent / forestTarget) * 100)) || 70;
+          const forestRemaining = Math.max(0, forestTarget - forestCurrent);
+
+          const agriTarget = Number(summaryData?.agri_target_rai ?? 50000);
+          const agriCurrent = Number(summaryData?.agri_current_rai ?? 28500);
+          const agriPct = Math.min(100, Math.round((agriCurrent / agriTarget) * 100)) || 57;
+          const agriRemaining = Math.max(0, agriTarget - agriCurrent);
+
+          return (
+            <div className="bg-[#051c18]/95 backdrop-blur-xl border border-emerald-900/40 rounded-3xl p-6 shadow-2xl grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6 divide-y sm:divide-y-0 lg:divide-x divide-emerald-900/50">
+              
+              {/* 1. UI Pattern 1: การ์ดตัวเลขคู่ (Current vs Target Cards) - CO2 Reduction */}
+              <div className="py-2 px-2 space-y-2 lg:py-0 flex flex-col justify-between">
+                <div className="space-y-1">
+                  <div className="flex items-baseline justify-between gap-1">
+                    <span className="text-[10px] text-emerald-300 font-bold uppercase">ทำได้จริง / เป้าหมาย</span>
+                    <span className="text-[10px] font-bold text-emerald-400 bg-emerald-950/80 px-1.5 py-0.5 rounded font-mono border border-emerald-800/40">{carbonPct}%</span>
+                  </div>
+                  <div className="font-mono text-base font-black text-white leading-tight">
+                    <span className="text-emerald-400">{currentCarbon.toLocaleString()}</span>
+                    <span className="text-slate-400 text-xs font-normal"> / {targetCarbon.toLocaleString()}</span>
+                  </div>
+                  <span className="block text-[11px] font-bold text-emerald-100">ตัน CO₂e สะสม</span>
+                  <span className="text-[9px] text-emerald-300/80 block">เป้าหมายปี {targetYear}</span>
+                </div>
+                <div className="w-full bg-emerald-950/80 rounded-full h-1.5 overflow-hidden border border-emerald-800/40 mt-1">
+                  <div className="bg-emerald-400 h-full rounded-full transition-all duration-500 shadow-[0_0_8px_rgba(52,211,153,0.5)]" style={{ width: `${carbonPct}%` }} />
+                </div>
+              </div>
+
+              {/* 2. UI Pattern 1: การ์ดตัวเลขคู่ (Current vs Target Cards) - โครงการยุทธศาสตร์ */}
+              <div className="py-2 px-2 space-y-2 lg:py-0 flex flex-col justify-between">
+                <div className="space-y-1">
+                  <div className="flex items-baseline justify-between gap-1">
+                    <span className="text-[10px] text-emerald-300 font-bold uppercase">ความก้าวหน้า</span>
+                    <span className="text-[10px] font-bold text-white bg-emerald-950/80 px-1.5 py-0.5 rounded font-mono border border-emerald-800/40">{projectsPct}%</span>
+                  </div>
+                  <div className="font-mono text-base font-black text-white leading-tight">
+                    <span className="text-emerald-400">{activeProjects}</span>
+                    <span className="text-slate-400 text-xs font-normal"> / {totalProjects} โครงการ</span>
+                  </div>
+                  <span className="block text-[11px] font-bold text-emerald-100">โครงการยุทธศาสตร์</span>
+                  <span className="text-[9px] text-emerald-300/80 block">ครอบคลุม 6 มิติหลัก</span>
+                </div>
+                <div className="w-full bg-emerald-950/80 rounded-full h-1.5 overflow-hidden border border-emerald-800/40 mt-1">
+                  <div className="bg-blue-400 h-full rounded-full transition-all duration-500" style={{ width: `${projectsPct}%` }} />
+                </div>
+              </div>
+
+              {/* 3. UI Pattern 1: การ์ดตัวเลขคู่ (Current vs Target Cards) - พื้นที่นำร่อง */}
+              <div className="py-2 px-2 space-y-2 lg:py-0 flex flex-col justify-between">
+                <div className="space-y-1">
+                  <div className="flex items-baseline justify-between gap-1">
+                    <span className="text-[10px] text-emerald-300 font-bold uppercase">ดำเนินการแล้ว</span>
+                    <span className="text-[10px] font-bold text-white bg-emerald-950/80 px-1.5 py-0.5 rounded font-mono border border-emerald-800/40">{pilotPct}%</span>
+                  </div>
+                  <div className="font-mono text-base font-black text-white leading-tight">
+                    <span className="text-emerald-400">{pilotCurrent}</span>
+                    <span className="text-slate-400 text-xs font-normal"> / {pilotTarget} พื้นที่</span>
+                  </div>
+                  <span className="block text-[11px] font-bold text-emerald-100">พื้นที่นำร่อง</span>
+                  <span className="text-[9px] text-emerald-300/80 block">13 อำเภอทั่วสระบุรี</span>
+                </div>
+                <div className="w-full bg-emerald-950/80 rounded-full h-1.5 overflow-hidden border border-emerald-800/40 mt-1">
+                  <div className="bg-amber-400 h-full rounded-full transition-all duration-500" style={{ width: `${pilotPct}%` }} />
+                </div>
+              </div>
+
+              {/* 4. UI Pattern 1: การ์ดตัวเลขคู่ (Current vs Target Cards) - มิติหลัก */}
+              <div className="py-2 px-2 space-y-2 lg:py-0 flex flex-col justify-between">
+                <div className="space-y-1">
+                  <div className="flex items-baseline justify-between gap-1">
+                    <span className="text-[10px] text-emerald-300 font-bold uppercase">ขับเคลื่อนครบ</span>
+                    <span className="text-[10px] font-bold text-emerald-400 bg-emerald-950/80 px-1.5 py-0.5 rounded font-mono border border-emerald-800/40">{dimPct}%</span>
+                  </div>
+                  <div className="font-mono text-base font-black text-white leading-tight">
+                    <span className="text-emerald-400">{dimCurrent}</span>
+                    <span className="text-slate-400 text-xs font-normal"> / {dimTarget} มิติ</span>
+                  </div>
+                  <span className="block text-[11px] font-bold text-emerald-100">มิติพัฒนาคาร์บอนต่ำ</span>
+                  <span className="text-[9px] text-emerald-300/80 block">ขับเคลื่อนเชิงบูรณาการ</span>
+                </div>
+                <div className="w-full bg-emerald-950/80 rounded-full h-1.5 overflow-hidden border border-emerald-800/40 mt-1">
+                  <div className="bg-emerald-400 h-full rounded-full transition-all duration-500" style={{ width: `${dimPct}%` }} />
+                </div>
+              </div>
+
+              {/* 5. UI Pattern 3: เลย์เอาต์เปรียบเทียบแบบ Dual-Metric (ตัวเลขคู่ขนาน) - ป่าชุมชน */}
+              <div className="py-2 px-2 space-y-2 lg:py-0 flex flex-col justify-between">
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between text-[10px] font-bold">
+                    <span className="text-emerald-300">เป้าหมายป่าชุมชน</span>
+                    <span className="text-emerald-400 font-mono text-[9px]">{forestPct}%</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-1.5 bg-emerald-950/60 p-2 rounded-xl border border-emerald-900/60">
+                    <div className="border-r border-emerald-800/40 pr-1">
+                      <span className="block text-[9px] text-emerald-300 font-medium">ปัจจุบัน</span>
+                      <strong className="font-mono text-xs font-black text-emerald-400 block leading-tight">
+                        {forestCurrent.toLocaleString()}
+                      </strong>
+                      <span className="text-[8px] text-slate-400">ไร่</span>
+                    </div>
+                    <div className="pl-1">
+                      <span className="block text-[9px] text-slate-400 font-medium">เป้าหมาย</span>
+                      <strong className="font-mono text-xs font-bold text-slate-200 block leading-tight">
+                        {forestTarget.toLocaleString()}
+                      </strong>
+                      <span className="text-[8px] text-slate-400">ไร่</span>
+                    </div>
+                  </div>
+                  <div className="flex justify-between items-center text-[9px] text-slate-300">
+                    <span>ฟื้นฟูเหมืองเก่า</span>
+                    <span className="text-emerald-300 font-mono font-semibold">ขาดอีก {forestRemaining.toLocaleString()} ไร่</span>
+                  </div>
+                </div>
+                <div className="w-full bg-emerald-950/80 rounded-full h-1.5 overflow-hidden border border-emerald-800/40">
+                  <div className="bg-teal-400 h-full rounded-full transition-all duration-500" style={{ width: `${forestPct}%` }} />
+                </div>
+              </div>
+
+              {/* 6. UI Pattern 3: เลย์เอาต์เปรียบเทียบแบบ Dual-Metric (ตัวเลขคู่ขนาน) - เกษตรคาร์บอนต่ำ AWD */}
+              <div className="py-2 px-2 space-y-2 lg:py-0 flex flex-col justify-between">
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between text-[10px] font-bold">
+                    <span className="text-emerald-300">เกษตรคาร์บอนต่ำ (AWD)</span>
+                    <span className="text-emerald-400 font-mono text-[9px]">{agriPct}%</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-1.5 bg-emerald-950/60 p-2 rounded-xl border border-emerald-900/60">
+                    <div className="border-r border-emerald-800/40 pr-1">
+                      <span className="block text-[9px] text-emerald-300 font-medium">ปัจจุบัน</span>
+                      <strong className="font-mono text-xs font-black text-emerald-400 block leading-tight">
+                        {agriCurrent.toLocaleString()}
+                      </strong>
+                      <span className="text-[8px] text-slate-400">ไร่</span>
+                    </div>
+                    <div className="pl-1">
+                      <span className="block text-[9px] text-slate-400 font-medium">เป้าหมาย</span>
+                      <strong className="font-mono text-xs font-bold text-slate-200 block leading-tight">
+                        {agriTarget.toLocaleString()}
+                      </strong>
+                      <span className="text-[8px] text-slate-400">ไร่</span>
+                    </div>
+                  </div>
+                  <div className="flex justify-between items-center text-[9px] text-slate-300">
+                    <span>นาเปียกสลับแห้ง</span>
+                    <span className="text-emerald-300 font-mono font-semibold">ขาดอีก {agriRemaining.toLocaleString()} ไร่</span>
+                  </div>
+                </div>
+                <div className="w-full bg-emerald-950/80 rounded-full h-1.5 overflow-hidden border border-emerald-800/40">
+                  <div className="bg-emerald-400 h-full rounded-full transition-all duration-500 shadow-[0_0_8px_rgba(52,211,153,0.5)]" style={{ width: `${agriPct}%` }} />
+                </div>
+              </div>
+
+            </div>
+          );
+        })()}
       </section>
 
       {/* INTERACTIVE MAP DASHBOARD */}
@@ -945,22 +1138,22 @@ export default function Home({
           {cmsData.slice(0, 3).map(news => (
             <div 
               key={news.id} 
-              className="flex flex-col justify-between overflow-hidden transition duration-300 bg-white border shadow-sm border-slate-200 rounded-3xl hover:border-emerald-500/20 hover:shadow-md"
+              onClick={() => navigateToNewsDetail ? navigateToNewsDetail(news.id) : setShowNewsModal(news)}
+              className="flex flex-col justify-between overflow-hidden transition duration-300 bg-white border shadow-sm border-slate-200 rounded-3xl hover:border-emerald-500/30 hover:shadow-md cursor-pointer group"
             >
               <div>
                 <img 
                   src={news.image_url} 
                   alt={news.title} 
-                  className="object-cover w-full border-b h-44 border-slate-100" 
+                  className="object-cover w-full border-b h-44 border-slate-100 group-hover:scale-102 transition duration-300" 
                 />
                 <div className="p-5 space-y-3">
                   <div className="flex justify-between items-center text-[9px] text-slate-400 font-mono font-bold">
                     <span className="bg-emerald-50 text-emerald-600 px-2.5 py-0.5 rounded-lg border border-emerald-100">{news.category}</span>
-                    <span>{new Date(news.created_at || Date.now()).toLocaleDateString('th-TH')}</span>
+                    <span>{new Date(news.published_at || news.created_at || Date.now()).toLocaleDateString('th-TH')}</span>
                   </div>
                   <h4 
-                    onClick={() => setShowNewsModal(news)}
-                    className="text-xs font-bold leading-normal transition cursor-pointer text-slate-800 line-clamp-2 hover:text-emerald-600"
+                    className="text-xs font-bold leading-normal transition text-slate-800 line-clamp-2 group-hover:text-emerald-600"
                   >
                     {news.title}
                   </h4>
@@ -972,10 +1165,14 @@ export default function Home({
 
               <div className="p-5 pt-0">
                 <button 
-                  onClick={() => setShowNewsModal(news)}
-                  className="w-full text-center py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-[10px] font-bold text-slate-600 transition"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (navigateToNewsDetail) navigateToNewsDetail(news.id);
+                    else setShowNewsModal(news);
+                  }}
+                  className="w-full text-center py-2.5 bg-emerald-50 hover:bg-emerald-600 border border-emerald-200 hover:border-emerald-600 rounded-xl text-[10px] font-bold text-emerald-700 hover:text-white transition duration-200"
                 >
-                  อ่านรายละเอียด
+                  อ่านรายละเอียดข่าวฉบับเต็ม →
                 </button>
               </div>
             </div>
@@ -1024,6 +1221,17 @@ export default function Home({
           </button>
         </div>
       </section>
+
+      {/* Floating Go to Top Button */}
+      <button
+        onClick={scrollToTop}
+        className={`fixed bottom-6 right-6 z-[1000] p-3.5 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-950/20 border border-emerald-500/20 transition-all duration-500 transform ${
+          showGoToTop ? 'translate-y-0 opacity-100 scale-100' : 'translate-y-16 opacity-0 scale-75 pointer-events-none'
+        }`}
+        title="เลื่อนขึ้นบนสุด"
+      >
+        <ArrowUp className="w-5 h-5" />
+      </button>
     </div>
   );
 }

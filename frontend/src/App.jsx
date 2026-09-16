@@ -13,8 +13,11 @@ import Dimensions from './pages/Dimensions';
 import Projects from './pages/Projects';
 import Dashboard from './pages/Dashboard';
 import News from './pages/News';
+import NewsDetail from './pages/NewsDetail';
 import Admin from './pages/Admin';
 import Partners from './pages/Partners';
+
+import { initialSummaryData, initialCmsArticles } from './fallbackData';
 
 // Static Configuration & Data
 const DIMENSION_DETAILS = {
@@ -89,11 +92,12 @@ const DISTRICTS = [
 ];
 
 export default function App() {
-  const [currentPage, setCurrentPage] = useState('home'); // home, about, dimensions, projects, dashboard, news, admin
+  const [currentPage, setCurrentPage] = useState('home'); // home, about, dimensions, projects, dashboard, news, news-detail, admin, partners
+  const [selectedNewsId, setSelectedNewsId] = useState(1);
   const [selectedDimension, setSelectedDimension] = useState(1);
   const [selectedDistrict, setSelectedDistrict] = useState(DISTRICTS.find(d => d.id === 'muak-lek'));
   const [activeMapDimension, setActiveMapDimension] = useState('all');
-  const [activeAdminTab, setActiveAdminTab] = useState('projects'); // projects, cms, activities, api
+  const [activeAdminTab, setActiveAdminTab] = useState('metrics'); // metrics, cms, projects, activities, api
   
   // Authentication States
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -104,21 +108,9 @@ export default function App() {
   
   // Real-time API States loaded from local REST backend
   const [projectsData, setProjectsData] = useState([]);
-  const [cmsData, setCmsData] = useState([]);
+  const [cmsData, setCmsData] = useState(initialCmsArticles);
   const [activitiesData, setActivitiesData] = useState([]);
-  const [summaryData, setSummaryData] = useState({
-    gpp_gdp_saraburi_thb: '245,000,000,000',
-    cement_production_pct_national: 80,
-    national_ghg_emissions_rank: 3,
-    reduction_target_tons_co2e: 5000000,
-    current_reduced_tons_co2e: 2170000,
-    target_year: 2027,
-    total_projects: 17,
-    active_projects: 15,
-    total_budget_baht: 367000000,
-    partnership_model: '4Ps (Public-Private-People Partnership)',
-    wef_initiative_member: true
-  });
+  const [summaryData, setSummaryData] = useState(initialSummaryData);
   
   // Form Submission Modals
   const [showAddProjectModal, setShowAddProjectModal] = useState(false);
@@ -132,7 +124,7 @@ export default function App() {
     name: '', dimension_id: 1, description: '', indicator: '', unit: '', target_value: 100, budget_baht: 1000000, agency: ''
   });
   const [newNews, setNewNews] = useState({
-    title: '', category: 'News', summary: '', content: '', author: '', image_url: ''
+    title: '', category: 'News', summary: '', content: '', author: '', image_url: '', gallery_images: []
   });
   const [newActivity, setNewActivity] = useState({
     project_id: 1, title: '', location: '', description: '', carbon_saved_co2e: 50, budget_spent_baht: 25000, activity_date: new Date().toISOString().split('T')[0]
@@ -166,7 +158,32 @@ export default function App() {
         setSummaryData(data);
       }
     } catch (err) {
-      console.error("API error connecting to local server port 5000, falling back to simulated memory", err);
+      console.error("API error connecting to local server, using initial data", err);
+    }
+  };
+
+  // Helper to navigate to full news detail page
+  const navigateToNewsDetail = (id) => {
+    setSelectedNewsId(id);
+    setCurrentPage('news-detail');
+  };
+
+  // Handler to update dynamic summary metrics
+  const handleUpdateSummary = async (payload) => {
+    try {
+      const res = await fetch('/api/v1/summary', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setSummaryData(updated);
+      } else {
+        setSummaryData(prev => ({ ...prev, ...payload }));
+      }
+    } catch (err) {
+      setSummaryData(prev => ({ ...prev, ...payload }));
     }
   };
 
@@ -176,7 +193,11 @@ export default function App() {
     // 1. History popstate event listener for back/forward navigation
     const handlePopState = () => {
       const path = window.location.pathname.replace(/^\//, '');
-      if (['about', 'dimensions', 'projects', 'dashboard', 'news', 'admin'].includes(path)) {
+      if (path.startsWith('news/')) {
+        const id = path.split('/')[1];
+        setSelectedNewsId(id);
+        setCurrentPage('news-detail');
+      } else if (['about', 'dimensions', 'projects', 'dashboard', 'news', 'admin', 'partners'].includes(path)) {
         setCurrentPage(path);
       } else {
         setCurrentPage('home');
@@ -193,11 +214,18 @@ export default function App() {
   // 2. Sync state changes back to URL pathname (History API Router without #)
   useEffect(() => {
     const path = window.location.pathname.replace(/^\//, '');
-    if (path !== currentPage) {
-      const targetPath = currentPage === 'home' ? '/' : `/${currentPage}`;
+    let targetPath = '/';
+    if (currentPage === 'news-detail' && selectedNewsId) {
+      targetPath = `/news/${selectedNewsId}`;
+    } else if (currentPage !== 'home') {
+      targetPath = `/${currentPage}`;
+    }
+
+    if (window.location.pathname !== targetPath) {
       window.history.pushState({}, '', targetPath);
     }
-  }, [currentPage]);
+    window.scrollTo(0, 0);
+  }, [currentPage, selectedNewsId]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -277,18 +305,23 @@ export default function App() {
     }
   };
 
-  const handlePostNews = async (e) => {
-    e.preventDefault();
+  const handlePostNews = async (formDataOrEvent) => {
+    let payload = newNews;
+    if (formDataOrEvent && typeof formDataOrEvent.preventDefault === 'function') {
+      formDataOrEvent.preventDefault();
+    } else if (formDataOrEvent && typeof formDataOrEvent === 'object') {
+      payload = formDataOrEvent;
+    }
     try {
       const res = await fetch('/api/v1/cms', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newNews)
+        body: JSON.stringify(payload)
       });
       if (res.ok) {
         fetchData();
         setShowAddNewsModal(false);
-        setNewNews({ title: '', category: 'News', summary: '', content: '', author: '', image_url: '' });
+        setNewNews({ title: '', category: 'News', summary: '', content: '', author: '', image_url: '', gallery_images: [] });
       }
     } catch (err) {
       alert("ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ฐานข้อมูลได้");
@@ -446,6 +479,7 @@ export default function App() {
             DISTRICTS={DISTRICTS}
             MAP_DIMENSIONS={MAP_DIMENSIONS}
             DIMENSION_DETAILS={DIMENSION_DETAILS}
+            navigateToNewsDetail={navigateToNewsDetail}
           />
         )}
 
@@ -489,6 +523,16 @@ export default function App() {
             cmsData={cmsData}
             showNewsModal={showNewsModal}
             setShowNewsModal={setShowNewsModal}
+            navigateToNewsDetail={navigateToNewsDetail}
+          />
+        )}
+
+        {currentPage === 'news-detail' && (
+          <NewsDetail 
+            newsId={selectedNewsId}
+            cmsData={cmsData}
+            setCurrentPage={setCurrentPage}
+            navigateToNewsDetail={navigateToNewsDetail}
           />
         )}
 
@@ -509,6 +553,8 @@ export default function App() {
             projectsData={projectsData}
             cmsData={cmsData}
             activitiesData={activitiesData}
+            summaryData={summaryData}
+            onUpdateSummary={handleUpdateSummary}
             setShowAddProjectModal={setShowAddProjectModal}
             setShowAddNewsModal={setShowAddNewsModal}
             setShowAddActivityModal={setShowAddActivityModal}

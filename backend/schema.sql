@@ -9,8 +9,10 @@ CREATE TABLE IF NOT EXISTS cms_articles (
     summary TEXT,
     content TEXT NOT NULL,
     image_url VARCHAR(500),
+    gallery_images JSONB DEFAULT '[]', -- Array of uploaded image attachments
     author VARCHAR(100),
     is_published BOOLEAN DEFAULT FALSE,
+    published_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );

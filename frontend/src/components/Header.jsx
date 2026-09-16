@@ -21,7 +21,7 @@ export default function Header({
   const isTransparent = currentPage === 'home' && !isScrolled;
 
   const getLinkClass = (pageName) => {
-    const isActive = currentPage === pageName;
+    const isActive = currentPage === pageName || (pageName === 'news' && currentPage === 'news-detail');
     if (isTransparent) {
       return `pb-1 transition font-bold text-xs ${
         isActive ? 'text-white border-b-2 border-white' : 'text-slate-300 hover:text-white'
