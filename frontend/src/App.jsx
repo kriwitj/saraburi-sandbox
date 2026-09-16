@@ -18,6 +18,7 @@ import Admin from './pages/Admin';
 import Partners from './pages/Partners';
 
 import { initialSummaryData, initialCmsArticles, projects as initialProjects, initialActivities } from './fallbackData';
+import { idbGet, idbSet } from './utils/idbStorage';
 
 // Static Configuration & Data
 const DIMENSION_DETAILS = {
@@ -99,12 +100,41 @@ export default function App() {
   const [activeMapDimension, setActiveMapDimension] = useState('all');
   const [activeAdminTab, setActiveAdminTab] = useState('metrics'); // metrics, cms, projects, activities, api
   
-  // Authentication States
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [user, setUser] = useState(null);
+  // Authentication States with session persistence across page refreshes
+  const [user, setUser] = useState(() => {
+    try {
+      const stored = localStorage.getItem('sb_auth_user');
+      if (stored) return JSON.parse(stored);
+    } catch (e) {}
+    return null;
+  });
+
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    try {
+      const storedAuth = localStorage.getItem('sb_is_authenticated');
+      const storedUser = localStorage.getItem('sb_auth_user');
+      return storedAuth === 'true' && !!storedUser;
+    } catch (e) {}
+    return false;
+  });
+
   const [loginCredentials, setLoginCredentials] = useState({ username: '', password: '' });
   const [loginError, setLoginError] = useState('');
   const [isKeycloakLoading, setIsKeycloakLoading] = useState(false);
+
+  // Sync auth state to localStorage
+  useEffect(() => {
+    try {
+      if (isAuthenticated && user) {
+        localStorage.setItem('sb_is_authenticated', 'true');
+        localStorage.setItem('sb_auth_user', JSON.stringify(user));
+      } else {
+        localStorage.removeItem('sb_is_authenticated');
+        localStorage.removeItem('sb_auth_user');
+        localStorage.removeItem('sb_auth_token');
+      }
+    } catch (e) {}
+  }, [isAuthenticated, user]);
   
   // Real-time API States with persistent localStorage and resilient fallback
   const [projectsData, setProjectsData] = useState(() => {
@@ -151,31 +181,35 @@ export default function App() {
     return initialSummaryData;
   });
 
-  // Persistent localStorage Sync Effects (survives refresh even if backend is offline)
+  // Persistent Dual-Layer Storage Sync (localStorage + High-Capacity IndexedDB)
   useEffect(() => {
     try {
       localStorage.setItem('sb_cms_data', JSON.stringify(cmsData));
     } catch (e) {
-      console.warn("localStorage quota exceeded for cmsData", e);
+      console.warn("localStorage quota exceeded for cmsData, relying on IndexedDB", e);
     }
+    idbSet('sb_cms_data', cmsData).catch(() => {});
   }, [cmsData]);
 
   useEffect(() => {
     try {
       localStorage.setItem('sb_summary_data', JSON.stringify(summaryData));
     } catch (e) {}
+    idbSet('sb_summary_data', summaryData).catch(() => {});
   }, [summaryData]);
 
   useEffect(() => {
     try {
       localStorage.setItem('sb_projects_data', JSON.stringify(projectsData));
     } catch (e) {}
+    idbSet('sb_projects_data', projectsData).catch(() => {});
   }, [projectsData]);
 
   useEffect(() => {
     try {
       localStorage.setItem('sb_activities_data', JSON.stringify(activitiesData));
     } catch (e) {}
+    idbSet('sb_activities_data', activitiesData).catch(() => {});
   }, [activitiesData]);
   
   // Form Submission Modals
@@ -259,7 +293,12 @@ export default function App() {
 
   // Handler to update dynamic summary metrics
   const handleUpdateSummary = async (payload) => {
-    setSummaryData(prev => ({ ...prev, ...payload }));
+    setSummaryData(prev => {
+      const updated = { ...prev, ...payload };
+      idbSet('sb_summary_data', updated).catch(() => {});
+      try { localStorage.setItem('sb_summary_data', JSON.stringify(updated)); } catch (e) {}
+      return updated;
+    });
     try {
       const res = await fetch('/api/v1/summary', {
         method: 'PUT',
@@ -269,11 +308,37 @@ export default function App() {
       if (res.ok) {
         const updated = await res.json();
         setSummaryData(updated);
+        idbSet('sb_summary_data', updated).catch(() => {});
+        try { localStorage.setItem('sb_summary_data', JSON.stringify(updated)); } catch (e) {}
       }
     } catch (err) {}
   };
 
   useEffect(() => {
+    // 0. Hydrate state from IndexedDB in case it holds more/larger data than localStorage
+    (async () => {
+      try {
+        const idbCms = await idbGet('sb_cms_data');
+        if (Array.isArray(idbCms) && idbCms.length > 0) {
+          setCmsData(prev => idbCms.length >= prev.length ? idbCms : prev);
+        }
+        const idbProj = await idbGet('sb_projects_data');
+        if (Array.isArray(idbProj) && idbProj.length > 0) {
+          setProjectsData(prev => idbProj.length >= prev.length ? idbProj : prev);
+        }
+        const idbActs = await idbGet('sb_activities_data');
+        if (Array.isArray(idbActs) && idbActs.length > 0) {
+          setActivitiesData(prev => idbActs.length >= prev.length ? idbActs : prev);
+        }
+        const idbSum = await idbGet('sb_summary_data');
+        if (idbSum && typeof idbSum === 'object') {
+          setSummaryData(prev => ({ ...prev, ...idbSum }));
+        }
+      } catch (err) {
+        console.warn("IndexedDB hydration error:", err);
+      }
+    })();
+
     fetchData();
 
     // 1. History popstate event listener for back/forward navigation
@@ -409,6 +474,11 @@ export default function App() {
   const handleLogout = () => {
     setIsAuthenticated(false);
     setUser(null);
+    try {
+      localStorage.removeItem('sb_is_authenticated');
+      localStorage.removeItem('sb_auth_user');
+      localStorage.removeItem('sb_auth_token');
+    } catch (e) {}
     setCurrentPage('home');
   };
 
@@ -431,8 +501,13 @@ export default function App() {
       dimension_name: dimsMap[newProject.dimension_id]
     };
     
-    // 1. Immediately store in local state (which syncs to localStorage)
-    setProjectsData(prev => [payload, ...prev]);
+    // 1. Immediately store in local state and dual storage
+    setProjectsData(prev => {
+      const updated = [payload, ...prev];
+      idbSet('sb_projects_data', updated).catch(() => {});
+      try { localStorage.setItem('sb_projects_data', JSON.stringify(updated)); } catch (e) {}
+      return updated;
+    });
     setShowAddProjectModal(false);
     setNewProject({ name: '', dimension_id: 1, description: '', indicator: '', unit: '', target_value: 100, budget_baht: 1000000, agency: '' });
 
@@ -445,7 +520,12 @@ export default function App() {
       });
       if (res.ok) {
         const serverItem = await res.json();
-        setProjectsData(prev => prev.map(p => p.id === tempId ? serverItem : p));
+        setProjectsData(prev => {
+          const updated = prev.map(p => p.id === tempId ? serverItem : p);
+          idbSet('sb_projects_data', updated).catch(() => {});
+          try { localStorage.setItem('sb_projects_data', JSON.stringify(updated)); } catch (e) {}
+          return updated;
+        });
       }
     } catch (err) {}
   };
@@ -466,8 +546,13 @@ export default function App() {
       published_at: payload.published_at || new Date().toISOString()
     };
 
-    // 1. Immediately store in local state (which syncs to localStorage)
-    setCmsData(prev => [newArticle, ...prev]);
+    // 1. Immediately store in local state and dual storage (IndexedDB + localStorage)
+    setCmsData(prev => {
+      const updated = [newArticle, ...prev];
+      idbSet('sb_cms_data', updated).catch(() => {});
+      try { localStorage.setItem('sb_cms_data', JSON.stringify(updated)); } catch (e) {}
+      return updated;
+    });
     setShowAddNewsModal(false);
     setNewNews({ title: '', category: 'News', summary: '', content: '', author: '', image_url: '', gallery_images: [] });
 
@@ -480,10 +565,15 @@ export default function App() {
       });
       if (res.ok) {
         const serverArticle = await res.json();
-        setCmsData(prev => prev.map(item => item.id === tempId ? serverArticle : item));
+        setCmsData(prev => {
+          const updated = prev.map(item => item.id === tempId ? serverArticle : item);
+          idbSet('sb_cms_data', updated).catch(() => {});
+          try { localStorage.setItem('sb_cms_data', JSON.stringify(updated)); } catch (e) {}
+          return updated;
+        });
       }
     } catch (err) {
-      console.warn("Backend API unavailable, article preserved in browser localStorage.", err);
+      console.warn("Backend API unavailable, article preserved in client storage.", err);
     }
   };
 
@@ -495,8 +585,13 @@ export default function App() {
       id: tempId
     };
 
-    // 1. Immediately store in local state (which syncs to localStorage)
-    setActivitiesData(prev => [newAct, ...prev]);
+    // 1. Immediately store in local state and dual storage
+    setActivitiesData(prev => {
+      const updated = [newAct, ...prev];
+      idbSet('sb_activities_data', updated).catch(() => {});
+      try { localStorage.setItem('sb_activities_data', JSON.stringify(updated)); } catch (e) {}
+      return updated;
+    });
     setShowAddActivityModal(false);
     setNewActivity({ project_id: 1, title: '', location: '', description: '', carbon_saved_co2e: 50, budget_spent_baht: 25000, activity_date: new Date().toISOString().split('T')[0] });
 
@@ -509,7 +604,12 @@ export default function App() {
       });
       if (res.ok) {
         const serverAct = await res.json();
-        setActivitiesData(prev => prev.map(a => a.id === tempId ? serverAct : a));
+        setActivitiesData(prev => {
+          const updated = prev.map(a => a.id === tempId ? serverAct : a);
+          idbSet('sb_activities_data', updated).catch(() => {});
+          try { localStorage.setItem('sb_activities_data', JSON.stringify(updated)); } catch (e) {}
+          return updated;
+        });
       }
     } catch (err) {}
   };
@@ -532,6 +632,13 @@ export default function App() {
   };
 
   const handleUpdateProject = async (id, payload) => {
+    setProjectsData(prev => {
+      const updated = prev.map(p => p.id === id ? { ...p, ...payload } : p);
+      idbSet('sb_projects_data', updated).catch(() => {});
+      try { localStorage.setItem('sb_projects_data', JSON.stringify(updated)); } catch (e) {}
+      return updated;
+    });
+
     try {
       const res = await fetch(`/api/v1/projects/${id}`, {
         method: 'PUT',
@@ -543,11 +650,17 @@ export default function App() {
         return;
       }
     } catch (err) {}
-    setProjectsData(prev => prev.map(p => p.id === id ? { ...p, ...payload } : p));
   };
 
   const handleDeleteProject = async (id) => {
     if (!window.confirm("คุณแน่ใจหรือไม่ที่จะลบโครงการนี้?")) return;
+    setProjectsData(prev => {
+      const updated = prev.filter(p => p.id !== id);
+      idbSet('sb_projects_data', updated).catch(() => {});
+      try { localStorage.setItem('sb_projects_data', JSON.stringify(updated)); } catch (e) {}
+      return updated;
+    });
+
     try {
       const res = await fetch(`/api/v1/projects/${id}`, { method: 'DELETE' });
       if (res.ok) {
@@ -555,10 +668,16 @@ export default function App() {
         return;
       }
     } catch (err) {}
-    setProjectsData(prev => prev.filter(p => p.id !== id));
   };
 
   const handleUpdateNews = async (id, payload) => {
+    setCmsData(prev => {
+      const updated = prev.map(item => item.id === id ? { ...item, ...payload } : item);
+      idbSet('sb_cms_data', updated).catch(() => {});
+      try { localStorage.setItem('sb_cms_data', JSON.stringify(updated)); } catch (e) {}
+      return updated;
+    });
+
     try {
       const res = await fetch(`/api/v1/cms/${id}`, {
         method: 'PUT',
@@ -570,11 +689,17 @@ export default function App() {
         return;
       }
     } catch (err) {}
-    setCmsData(prev => prev.map(item => item.id === id ? { ...item, ...payload } : item));
   };
 
   const handleDeleteNews = async (id) => {
     if (!window.confirm("คุณแน่ใจหรือไม่ที่จะลบข่าวสารนี้?")) return;
+    setCmsData(prev => {
+      const updated = prev.filter(item => item.id !== id);
+      idbSet('sb_cms_data', updated).catch(() => {});
+      try { localStorage.setItem('sb_cms_data', JSON.stringify(updated)); } catch (e) {}
+      return updated;
+    });
+
     try {
       const res = await fetch(`/api/v1/cms/${id}`, { method: 'DELETE' });
       if (res.ok) {
@@ -582,10 +707,16 @@ export default function App() {
         return;
       }
     } catch (err) {}
-    setCmsData(prev => prev.filter(item => item.id !== id));
   };
 
   const handleUpdateActivity = async (id, payload) => {
+    setActivitiesData(prev => {
+      const updated = prev.map(a => a.id === id ? { ...a, ...payload } : a);
+      idbSet('sb_activities_data', updated).catch(() => {});
+      try { localStorage.setItem('sb_activities_data', JSON.stringify(updated)); } catch (e) {}
+      return updated;
+    });
+
     try {
       const res = await fetch(`/api/v1/activities/${id}`, {
         method: 'PUT',
@@ -597,11 +728,17 @@ export default function App() {
         return;
       }
     } catch (err) {}
-    setActivitiesData(prev => prev.map(a => a.id === id ? { ...a, ...payload } : a));
   };
 
   const handleDeleteActivity = async (id) => {
     if (!window.confirm("คุณแน่ใจหรือไม่ที่จะลบกิจกรรมนี้?")) return;
+    setActivitiesData(prev => {
+      const updated = prev.filter(a => a.id !== id);
+      idbSet('sb_activities_data', updated).catch(() => {});
+      try { localStorage.setItem('sb_activities_data', JSON.stringify(updated)); } catch (e) {}
+      return updated;
+    });
+
     try {
       const res = await fetch(`/api/v1/activities/${id}`, { method: 'DELETE' });
       if (res.ok) {
@@ -609,7 +746,6 @@ export default function App() {
         return;
       }
     } catch (err) {}
-    setActivitiesData(prev => prev.filter(a => a.id !== id));
   };
 
   // Filter projects list locally

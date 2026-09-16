@@ -37,6 +37,52 @@ export default function NewsFormModal({
   const [draggedIdx, setDraggedIdx] = useState(null);
   const [dragOverIdx, setDragOverIdx] = useState(null);
 
+  // Compress and resize image files to prevent exceeding storage quotas
+  const compressImageFile = (file, maxWidth = 1200, maxHeight = 1200, quality = 0.8) => {
+    return new Promise((resolve) => {
+      if (file.type === 'image/svg+xml' || file.type === 'image/gif') {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve(e.target.result);
+        reader.onerror = () => resolve('');
+        reader.readAsDataURL(file);
+        return;
+      }
+
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        let { width, height } = img;
+        if (width > maxWidth || height > maxHeight) {
+          if (width > height) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          } else {
+            width = Math.round((width * maxHeight) / height);
+            maxHeight = height;
+          }
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+
+        const compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
+        resolve(compressedDataUrl);
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        const reader = new FileReader();
+        reader.onload = (e) => resolve(e.target.result);
+        reader.onerror = () => resolve('');
+        reader.readAsDataURL(file);
+      };
+      img.src = url;
+    });
+  };
+
   useEffect(() => {
     if (initialData) {
       const pubDate = initialData.published_at || initialData.created_at;
@@ -48,6 +94,7 @@ export default function NewsFormModal({
       }
 
       setFormData({
+        id: initialData.id,
         title: initialData.title || '',
         category: initialData.category || 'News',
         summary: initialData.summary || '',
@@ -73,40 +120,41 @@ export default function NewsFormModal({
 
   if (!isOpen) return null;
 
-  // Handle uploading multiple image files (Base64 conversion)
-  const handleFilesUpload = (e) => {
+  // Handle uploading multiple image files with automatic compression
+  const handleFilesUpload = async (e) => {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
 
     setIsProcessingFiles(true);
-    let completed = 0;
-    const newImages = [];
-
-    files.forEach(file => {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const base64 = event.target.result;
-        newImages.push({
-          id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-          url: base64,
-          caption: file.name.replace(/\.[^/.]+$/, "")
-        });
-
-        completed++;
-        if (completed === files.length) {
-          setFormData(prev => {
-            const updatedGallery = [...(prev.gallery_images || []), ...newImages];
-            return {
-              ...prev,
-              gallery_images: updatedGallery,
-              image_url: prev.image_url || updatedGallery[0]?.url || (typeof updatedGallery[0] === 'string' ? updatedGallery[0] : '')
-            };
+    try {
+      const newImages = [];
+      for (const file of files) {
+        const compressedBase64 = await compressImageFile(file);
+        if (compressedBase64) {
+          newImages.push({
+            id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            url: compressedBase64,
+            caption: file.name.replace(/\.[^/.]+$/, "")
           });
-          setIsProcessingFiles(false);
         }
-      };
-      reader.readAsDataURL(file);
-    });
+      }
+
+      if (newImages.length > 0) {
+        setFormData(prev => {
+          const updatedGallery = [...(prev.gallery_images || []), ...newImages];
+          return {
+            ...prev,
+            gallery_images: updatedGallery,
+            image_url: prev.image_url || updatedGallery[0]?.url || (typeof updatedGallery[0] === 'string' ? updatedGallery[0] : '')
+          };
+        });
+      }
+    } catch (err) {
+      console.error("Error processing and compressing images:", err);
+    } finally {
+      setIsProcessingFiles(false);
+      if (e.target) e.target.value = '';
+    }
   };
 
   const handleRemoveImage = (indexToRemove) => {
@@ -218,6 +266,7 @@ export default function NewsFormModal({
     }
 
     const payload = {
+      ...(initialData?.id ? { id: initialData.id } : {}),
       ...formData,
       image_url: formData.image_url || (formData.gallery_images[0] ? (typeof formData.gallery_images[0] === 'string' ? formData.gallery_images[0] : formData.gallery_images[0].url) : 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=800&q=80')
     };

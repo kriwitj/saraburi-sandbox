@@ -1134,8 +1134,15 @@ export default function Home({
           </button>
         </div>
 
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-          {cmsData.slice(0, 3).map(news => (
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {[...cmsData]
+            .sort((a, b) => {
+              const dateA = new Date(a.published_at || a.created_at || 0).getTime();
+              const dateB = new Date(b.published_at || b.created_at || 0).getTime();
+              return dateB - dateA;
+            })
+            .slice(0, 6)
+            .map(news => (
             <div 
               key={news.id} 
               onClick={() => navigateToNewsDetail ? navigateToNewsDetail(news.id) : setShowNewsModal(news)}
