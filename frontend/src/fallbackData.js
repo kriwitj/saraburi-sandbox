@@ -306,3 +306,40 @@ export const initialCmsArticles = [
     updated_at: '2026-07-15T10:30:00.000Z'
   }
 ];
+
+export const initialActivities = [
+  {
+    id: 1,
+    project_id: 1,
+    title: 'ลงนามความร่วมมือการใช้ปูนไฮดรอลิก มอก. 2594 ในกลุ่มเทศบาลนำร่อง',
+    location: 'เทศบาลเมืองสระบุรี',
+    description: 'จัดอบรมการผสมคอนกรีตและการประยุกต์ใช้งานโครงสร้างพื้นฐานท้องถิ่นแก่ผู้รับเหมาก่อสร้างและช่างโยธา',
+    carbon_saved_co2e: 125.40,
+    budget_spent_baht: 150000,
+    activity_date: '2026-06-15',
+    image_url: 'https://images.unsplash.com/photo-1590069261209-f8e9b8642343?auto=format&fit=crop&w=400&q=80'
+  },
+  {
+    id: 2,
+    project_id: 4,
+    title: 'เปิดตัวทดลองจ่ายไฟเฟสแรก โซลาร์ลอยน้ำคลองเพรียว',
+    location: 'อ่างเก็บน้ำคลองเพรียว อ.เมือง',
+    description: 'ติดตั้งแล้วเสร็จ 2.5 MW เริ่มเดินเครื่องจ่ายไฟทดลองเข้าอาคารหน่วยงานราชการและศูนย์บริการสาธารณสุข',
+    carbon_saved_co2e: 340.20,
+    budget_spent_baht: 45000000,
+    activity_date: '2026-07-10',
+    image_url: 'https://images.unsplash.com/photo-1509391366360-2e959784a276?auto=format&fit=crop&w=400&q=80'
+  },
+  {
+    id: 3,
+    project_id: 10,
+    title: 'จัดกิจกรรมตรวจวัดระดับก๊าซมีเทนและสาธิตการทำนาเปียกสลับแห้ง (AWD)',
+    location: 'ต.หนองแซง อ.หนองแซง',
+    description: 'เกษตรกรเข้าร่วมอบรมกว่า 120 ราย เพื่อเรียนรู้วิธีการติดตั้งท่อวัดน้ำและสลับการระบายน้ำเพื่อลดการหมักของก๊าซมีเทนในดิน',
+    carbon_saved_co2e: 85.00,
+    budget_spent_baht: 90000,
+    activity_date: '2026-07-22',
+    image_url: 'https://images.unsplash.com/photo-1530595467537-0b5996c41f2d?auto=format&fit=crop&w=400&q=80'
+  }
+];
+

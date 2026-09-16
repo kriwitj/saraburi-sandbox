@@ -17,7 +17,7 @@ import NewsDetail from './pages/NewsDetail';
 import Admin from './pages/Admin';
 import Partners from './pages/Partners';
 
-import { initialSummaryData, initialCmsArticles } from './fallbackData';
+import { initialSummaryData, initialCmsArticles, projects as initialProjects, initialActivities } from './fallbackData';
 
 // Static Configuration & Data
 const DIMENSION_DETAILS = {
@@ -106,10 +106,10 @@ export default function App() {
   const [loginError, setLoginError] = useState('');
   const [isKeycloakLoading, setIsKeycloakLoading] = useState(false);
   
-  // Real-time API States loaded from local REST backend
-  const [projectsData, setProjectsData] = useState([]);
+  // Real-time API States with resilient fallback initial data
+  const [projectsData, setProjectsData] = useState(initialProjects);
   const [cmsData, setCmsData] = useState(initialCmsArticles);
-  const [activitiesData, setActivitiesData] = useState([]);
+  const [activitiesData, setActivitiesData] = useState(initialActivities);
   const [summaryData, setSummaryData] = useState(initialSummaryData);
   
   // Form Submission Modals
@@ -134,31 +134,54 @@ export default function App() {
   const [projectSearch, setProjectSearch] = useState('');
   const [projectFilterDimension, setProjectFilterDimension] = useState('all');
 
-  // Load backend data dynamically
+  // Load backend data dynamically with fallback protection
   const fetchData = async () => {
     try {
       const projRes = await fetch('/api/v1/projects');
       if (projRes.ok) {
         const data = await projRes.json();
-        setProjectsData(data);
+        if (Array.isArray(data) && data.length > 0) {
+          setProjectsData(data);
+        }
       }
+    } catch (err) {
+      console.warn("API error fetching projects, using fallback data", err);
+    }
+
+    try {
       const cmsRes = await fetch('/api/v1/cms');
       if (cmsRes.ok) {
         const data = await cmsRes.json();
-        setCmsData(data);
+        if (Array.isArray(data) && data.length > 0) {
+          setCmsData(data);
+        }
       }
+    } catch (err) {
+      console.warn("API error fetching CMS, using fallback data", err);
+    }
+
+    try {
       const actRes = await fetch('/api/v1/activities');
       if (actRes.ok) {
         const data = await actRes.json();
-        setActivitiesData(data);
+        if (Array.isArray(data) && data.length > 0) {
+          setActivitiesData(data);
+        }
       }
+    } catch (err) {
+      console.warn("API error fetching activities, using fallback data", err);
+    }
+
+    try {
       const sumRes = await fetch('/api/v1/summary');
       if (sumRes.ok) {
         const data = await sumRes.json();
-        setSummaryData(data);
+        if (data && typeof data === 'object') {
+          setSummaryData(data);
+        }
       }
     } catch (err) {
-      console.error("API error connecting to local server, using initial data", err);
+      console.warn("API error fetching summary, using fallback data", err);
     }
   };
 

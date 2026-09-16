@@ -703,38 +703,46 @@ export default function Admin({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 text-[11px]">
-                    {projectsData.map(p => (
-                      <tr key={p.id} className="hover:bg-slate-50/80 transition">
-                        <td className="p-3 font-mono text-slate-400">#{p.id}</td>
-                        <td className="p-3 font-bold text-slate-800 max-w-xs truncate">{p.name}</td>
-                        <td className="p-3 text-slate-600 font-mono">มิติที่ {p.dimension_id}</td>
-                        <td className="p-3 font-mono">{p.target_value} {p.unit}</td>
-                        <td className="p-3 font-mono text-emerald-600 font-bold">{p.current_value} {p.unit}</td>
-                        <td className="p-3">
-                          <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
-                            p.status === 'Completed' ? 'bg-emerald-50 text-emerald-700' : 'bg-blue-50 text-blue-700'
-                          }`}>
-                            {p.status}
-                          </span>
-                        </td>
-                        <td className="p-3 text-right space-x-1">
-                          <button 
-                            onClick={() => setEditingProject(p)}
-                            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition"
-                            title="แก้ไข"
-                          >
-                            <Pencil className="w-3.5 h-3.5" />
-                          </button>
-                          <button 
-                            onClick={() => onDeleteProject(p.id)}
-                            className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition"
-                            title="ลบ"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                    {projectsData.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="p-8 text-center text-slate-400">
+                          ยังไม่มีโครงการยุทธศาสตร์ในระบบ คลิก "เพิ่มโครงการใหม่" ด้านบนเพื่อสร้างโครงการ
                         </td>
                       </tr>
-                    ))}
+                    ) : (
+                      projectsData.map(p => (
+                        <tr key={p.id} className="hover:bg-slate-50/80 transition">
+                          <td className="p-3 font-mono text-slate-400">#{p.id}</td>
+                          <td className="p-3 font-bold text-slate-800 max-w-xs truncate">{p.name}</td>
+                          <td className="p-3 text-slate-600 font-mono">มิติที่ {p.dimension_id}</td>
+                          <td className="p-3 font-mono">{p.target_value} {p.unit}</td>
+                          <td className="p-3 font-mono text-emerald-600 font-bold">{p.current_value} {p.unit}</td>
+                          <td className="p-3">
+                            <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
+                              p.status === 'Completed' ? 'bg-emerald-50 text-emerald-700' : 'bg-blue-50 text-blue-700'
+                            }`}>
+                              {p.status}
+                            </span>
+                          </td>
+                          <td className="p-3 text-right space-x-1">
+                            <button 
+                              onClick={() => setEditingProject(p)}
+                              className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                              title="แก้ไข"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                            <button 
+                              onClick={() => onDeleteProject(p.id)}
+                              className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition"
+                              title="ลบ"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>
