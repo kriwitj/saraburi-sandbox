@@ -147,7 +147,7 @@ export default function Dashboard({
         <div className="flex flex-col justify-between p-6 space-y-4 bg-white border shadow-sm lg:col-span-5 border-slate-200 rounded-3xl">
           <span className="block text-xs font-bold text-slate-700">สัดส่วนแหล่งลดก๊าซคาร์บอนสะสม (Source Breakdown)</span>
           
-          <div className="w-full h-56 text-xs">
+          <div className="w-full text-xs h-44">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie

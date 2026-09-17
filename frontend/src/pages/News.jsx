@@ -56,11 +56,11 @@ export default function News({
   }, [cmsData, activeCategory, searchQuery, sortBy]);
 
   return (
-    <section className="py-16 px-6 lg:px-12 max-w-7xl mx-auto w-full space-y-10 animate-in fade-in duration-200">
+    <section className="w-full px-6 py-16 mx-auto space-y-10 duration-200 lg:px-12 max-w-7xl animate-in fade-in">
       
       {/* Header section */}
-      <div className="text-center space-y-2">
-        <h2 className="text-3xl font-black text-slate-800 flex items-center justify-center gap-2">
+      <div className="space-y-2 text-center">
+        <h2 className="flex items-center justify-center gap-2 text-3xl font-black text-slate-800">
           <Newspaper className="w-8 h-8 text-emerald-600" />
           <span>ข่าวสารและภาพกิจกรรม (Public Relations & CMS)</span>
         </h2>
@@ -68,10 +68,10 @@ export default function News({
       </div>
 
       {/* Search, Filter & Sort Toolbar */}
-      <div className="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-sm space-y-4">
-        <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+      <div className="p-4 space-y-4 bg-white border shadow-sm border-slate-200/90 rounded-2xl">
+        <div className="flex flex-col items-center justify-between gap-4 md:flex-row">
           {/* Category tabs */}
-          <div className="flex flex-wrap gap-2 w-full md:w-auto text-xs">
+          <div className="flex flex-wrap w-full gap-2 text-xs md:w-auto">
             {[
               { key: 'all', label: 'ทั้งหมด' },
               { key: 'News', label: 'ข่าวประชาสัมพันธ์' },
@@ -95,7 +95,7 @@ export default function News({
           {/* Search and Sort controls */}
           <div className="flex flex-col sm:flex-row items-center gap-2.5 w-full md:w-auto">
             <div className="relative w-full sm:w-64">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <Search className="absolute w-4 h-4 -translate-y-1/2 text-slate-400 left-3 top-1/2" />
               <input
                 type="text"
                 placeholder="ค้นหาข่าวสาร, เนื้อหา, ผู้เขียน..."
@@ -135,7 +135,7 @@ export default function News({
         <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-[11px] text-slate-500">
           <div className="flex items-center gap-2">
             <span>
-              แสดง <strong className="text-slate-800 font-mono">{processedNews.length}</strong> จาก {cmsData.length} ข่าว
+              แสดง <strong className="font-mono text-slate-800">{processedNews.length}</strong> จาก {cmsData.length} ข่าว
             </span>
             {(searchQuery || activeCategory !== 'all' || sortBy !== 'published_desc') && (
               <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full">
@@ -150,7 +150,7 @@ export default function News({
                 setActiveCategory('all');
                 setSortBy('published_desc');
               }}
-              className="text-emerald-700 hover:text-emerald-800 font-bold hover:underline transition inline-flex items-center gap-1"
+              className="inline-flex items-center gap-1 font-bold transition text-emerald-700 hover:text-emerald-800 hover:underline"
             >
               <RotateCcw className="w-3 h-3" />
               <span>รีเซ็ตการค้นหาและการจัดเรียง</span>
@@ -160,9 +160,9 @@ export default function News({
       </div>
 
       {/* Grid: News lists */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
         {processedNews.length === 0 ? (
-          <div className="col-span-full py-16 text-center text-xs text-slate-400 border border-dashed border-slate-200 rounded-3xl">
+          <div className="py-16 text-xs text-center border border-dashed col-span-full text-slate-400 border-slate-200 rounded-3xl">
             {searchQuery ? `ไม่พบข่าวสารที่ตรงกับคำค้นหา "${searchQuery}"` : 'ไม่พบข่าวสารหรือภาพกิจกรรมในหมวดหมู่นี้'}
           </div>
         ) : (
@@ -183,13 +183,13 @@ export default function News({
               <article 
                 key={news.id} 
                 onClick={() => navigateToNewsDetail ? navigateToNewsDetail(news.id) : setShowNewsModal(news)}
-                className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm flex flex-col hover:border-emerald-500/30 hover:shadow-md transition duration-300 cursor-pointer group"
+                className="flex flex-col overflow-hidden transition duration-300 bg-white border shadow-sm cursor-pointer border-slate-200 rounded-2xl hover:border-emerald-500/30 hover:shadow-md group"
               >
                 <div className="relative">
                   <img 
                     src={news.image_url || 'https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=600&q=80'} 
                     alt={news.title} 
-                    className="w-full h-48 object-cover border-b border-slate-100 group-hover:scale-102 transition duration-300" 
+                    className="object-cover w-full h-56 transition duration-300 border-b border-slate-100 group-hover:scale-102" 
                   />
                   {galleryCount > 0 && (
                     <div className="absolute top-3 right-3 bg-slate-950/70 backdrop-blur-sm text-white px-2 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 shadow-sm">
@@ -199,7 +199,7 @@ export default function News({
                   )}
                 </div>
 
-                <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
+                <div className="flex flex-col justify-between flex-1 p-5 space-y-4">
                   <div className="space-y-2.5">
                     <div className="flex items-center gap-1.5 text-[10px] text-slate-400 font-mono font-bold">
                       <CalendarDays className="w-3.5 h-3.5 text-emerald-600" />
@@ -212,7 +212,7 @@ export default function News({
                       </span>
                     </div>
 
-                    <h3 className="text-xs md:text-sm font-bold text-slate-800 leading-snug line-clamp-2 group-hover:text-emerald-600 transition">
+                    <h3 className="text-xs font-bold leading-snug transition md:text-sm text-slate-800 line-clamp-2 group-hover:text-emerald-600">
                       {news.title}
                     </h3>
 
