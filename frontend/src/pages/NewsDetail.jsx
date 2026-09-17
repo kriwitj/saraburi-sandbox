@@ -22,7 +22,7 @@ export default function NewsDetail({
 
   if (!article) {
     return (
-      <div className="py-24 px-6 max-w-4xl mx-auto text-center space-y-4">
+      <div className="max-w-4xl px-6 py-24 mx-auto space-y-4 text-center">
         <h2 className="text-2xl font-bold text-slate-800">ไม่พบเนื้อหาข่าวสารที่ค้นหา</h2>
         <p className="text-sm text-slate-500">บทความนี้อาจถูกลบหรือย้ายที่อยู่แล้ว</p>
         <button 
@@ -71,16 +71,16 @@ export default function NewsDetail({
   };
 
   return (
-    <div className="py-10 px-6 lg:px-12 max-w-5xl mx-auto w-full space-y-10 animate-in fade-in duration-200">
+    <div className="w-full max-w-5xl px-6 py-10 mx-auto space-y-10 duration-200 lg:px-12 animate-in fade-in">
       
       {/* Top Navigation & Breadcrumbs */}
-      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-4 text-xs">
-        <div className="flex items-center gap-2 text-slate-500 font-medium">
-          <button onClick={() => setCurrentPage('home')} className="hover:text-emerald-600 transition">หน้าแรก</button>
+      <div className="flex flex-wrap items-center justify-between gap-4 pb-4 text-xs border-b border-slate-200">
+        <div className="flex items-center gap-2 font-medium text-slate-500">
+          <button onClick={() => setCurrentPage('home')} className="transition hover:text-emerald-600">หน้าแรก</button>
           <span>/</span>
-          <button onClick={() => setCurrentPage('news')} className="hover:text-emerald-600 transition">ข่าวสารและกิจกรรม</button>
+          <button onClick={() => setCurrentPage('news')} className="transition hover:text-emerald-600">ข่าวสารและกิจกรรม</button>
           <span>/</span>
-          <span className="text-slate-800 font-bold truncate max-w-xs md:max-w-md">{article.title}</span>
+          <span className="max-w-xs font-bold truncate text-slate-800 md:max-w-md">{article.title}</span>
         </div>
 
         <button 
@@ -98,26 +98,26 @@ export default function NewsDetail({
           <span className="bg-emerald-600 text-white font-bold text-[11px] px-3.5 py-1 rounded-full shadow-xs">
             {article.category}
           </span>
-          <span className="text-slate-400 text-xs font-mono">•</span>
+          <span className="font-mono text-xs text-slate-400">•</span>
           <div className="flex items-center gap-1.5 text-slate-500 font-mono text-xs">
             <Calendar className="w-4 h-4 text-emerald-600" />
             <span>เผยแพร่เมื่อ: {formattedDate} เวลา {formattedTime} น.</span>
           </div>
-          <span className="text-slate-400 text-xs font-mono hidden sm:inline">•</span>
+          <span className="hidden font-mono text-xs text-slate-400 sm:inline">•</span>
           <div className="items-center gap-1.5 text-slate-500 font-mono text-xs hidden sm:flex">
             <Clock className="w-4 h-4 text-slate-400" />
             <span>เวลาอ่านประมาณ {readTimeMin} นาที</span>
           </div>
         </div>
 
-        <h1 className="text-2xl md:text-4xl font-black text-slate-900 leading-tight tracking-tight">
+        <h1 className="text-2xl font-black leading-tight tracking-tight md:text-4xl text-slate-900">
           {article.title}
         </h1>
 
         {/* Author info and Action tools */}
-        <div className="flex flex-wrap items-center justify-between gap-4 p-4 bg-slate-50 border border-slate-200 rounded-2xl">
+        <div className="flex flex-wrap items-center justify-between gap-4 p-4 border bg-slate-50 border-slate-200 rounded-2xl">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-emerald-100 border border-emerald-200 flex items-center justify-center text-emerald-700 font-bold">
+            <div className="flex items-center justify-center w-10 h-10 font-bold border rounded-full bg-emerald-100 border-emerald-200 text-emerald-700">
               <User className="w-5 h-5" />
             </div>
             <div>
@@ -149,11 +149,11 @@ export default function NewsDetail({
 
       {/* Hero Featured Cover Image */}
       {article.image_url && (
-        <div className="relative rounded-3xl overflow-hidden shadow-lg border border-slate-200 group">
+        <div className="relative overflow-hidden border shadow-lg rounded-3xl border-slate-200 group">
           <img 
             src={article.image_url} 
             alt={article.title} 
-            className="w-full max-h-[480px] object-cover"
+            className="object-cover w-full"
           />
           <button
             onClick={() => setLightboxIndex(0)}
@@ -167,11 +167,11 @@ export default function NewsDetail({
 
       {/* Summary Box Lead Paragraph */}
       {article.summary && (
-        <div className="p-6 rounded-2xl bg-emerald-50/70 border-l-4 border-emerald-500 text-slate-700 shadow-xs">
+        <div className="p-6 border-l-4 shadow-xs rounded-2xl bg-emerald-50/70 border-emerald-500 text-slate-700">
           <span className="block text-[11px] font-bold text-emerald-700 uppercase font-mono tracking-wider mb-1">
             บทคัดย่อสรุปข่าว (Executive Summary)
           </span>
-          <p className="text-sm md:text-base font-semibold text-slate-800 leading-relaxed">
+          <p className="text-sm font-semibold leading-relaxed md:text-base text-slate-800">
             {article.summary}
           </p>
         </div>
@@ -184,16 +184,16 @@ export default function NewsDetail({
 
       {/* Multi-Image Gallery Section */}
       {gallery.length > 0 && (
-        <section className="space-y-4 pt-8 border-t border-slate-200">
+        <section className="pt-8 space-y-4 border-t border-slate-200">
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-black text-slate-800 flex items-center gap-2">
+            <h3 className="flex items-center gap-2 text-lg font-black text-slate-800">
               <Image className="w-5 h-5 text-emerald-600" />
               <span>ภาพบรรยากาศและกิจกรรม ({gallery.length} ภาพ)</span>
             </h3>
             <span className="text-[11px] text-slate-400 font-mono">คลิกที่รูปภาพเพื่อเปิดดูขนาดใหญ่</span>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
             {gallery.map((img, idx) => {
               const src = typeof img === 'string' ? img : img.url;
               const cap = typeof img === 'string' ? '' : img.caption;
@@ -201,12 +201,12 @@ export default function NewsDetail({
                 <div 
                   key={idx}
                   onClick={() => setLightboxIndex(idx)}
-                  className="group relative cursor-pointer overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 shadow-xs hover:border-emerald-500 hover:shadow-md transition aspect-video"
+                  className="relative overflow-hidden transition border shadow-xs cursor-pointer group rounded-2xl border-slate-200 bg-slate-100 hover:border-emerald-500 hover:shadow-md aspect-video"
                 >
                   <img 
                     src={src} 
                     alt={cap || `ภาพกิจกรรมที่ ${idx + 1}`} 
-                    className="w-full h-full object-cover transition duration-300 group-hover:scale-105" 
+                    className="object-cover w-full h-full transition duration-300 group-hover:scale-105" 
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition flex items-end p-2.5">
                     <span className="text-white text-[10px] font-bold truncate">
@@ -222,10 +222,10 @@ export default function NewsDetail({
 
       {/* Lightbox / Modal for Fullscreen Gallery View */}
       {lightboxIndex !== null && (
-        <div className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-md">
           <button 
             onClick={() => setLightboxIndex(null)}
-            className="absolute top-6 right-6 text-white/80 hover:text-white p-2 rounded-full bg-white/10 hover:bg-white/20 transition z-50"
+            className="absolute z-50 p-2 transition rounded-full top-6 right-6 text-white/80 hover:text-white bg-white/10 hover:bg-white/20"
           >
             <X className="w-6 h-6" />
           </button>
@@ -234,7 +234,7 @@ export default function NewsDetail({
           {gallery.length > 1 && (
             <button 
               onClick={() => setLightboxIndex((lightboxIndex - 1 + gallery.length) % gallery.length)}
-              className="absolute left-4 sm:left-8 top-1/2 -translate-y-1/2 text-white/80 hover:text-white p-3 rounded-full bg-white/10 hover:bg-white/20 transition z-50"
+              className="absolute z-50 p-3 transition -translate-y-1/2 rounded-full left-4 sm:left-8 top-1/2 text-white/80 hover:text-white bg-white/10 hover:bg-white/20"
             >
               <ChevronLeft className="w-6 h-6" />
             </button>
@@ -244,7 +244,7 @@ export default function NewsDetail({
           {gallery.length > 1 && (
             <button 
               onClick={() => setLightboxIndex((lightboxIndex + 1) % gallery.length)}
-              className="absolute right-4 sm:right-8 top-1/2 -translate-y-1/2 text-white/80 hover:text-white p-3 rounded-full bg-white/10 hover:bg-white/20 transition z-50"
+              className="absolute z-50 p-3 transition -translate-y-1/2 rounded-full right-4 sm:right-8 top-1/2 text-white/80 hover:text-white bg-white/10 hover:bg-white/20"
             >
               <ChevronRight className="w-6 h-6" />
             </button>
@@ -256,10 +256,10 @@ export default function NewsDetail({
               alt="Fullscreen Preview"
               className="max-h-[75vh] max-w-full rounded-2xl object-contain shadow-2xl border border-white/10"
             />
-            <div className="text-center text-white/80 text-xs font-mono">
+            <div className="font-mono text-xs text-center text-white/80">
               ภาพที่ {lightboxIndex + 1} จากทั้งหมด {gallery.length} ภาพ
               {typeof gallery[lightboxIndex] === 'object' && gallery[lightboxIndex].caption && (
-                <p className="text-white text-sm font-sans mt-1 font-bold">{gallery[lightboxIndex].caption}</p>
+                <p className="mt-1 font-sans text-sm font-bold text-white">{gallery[lightboxIndex].caption}</p>
               )}
             </div>
           </div>
@@ -267,7 +267,7 @@ export default function NewsDetail({
       )}
 
       {/* Bottom Footer Tags & Back button */}
-      <div className="pt-6 border-t border-slate-200 flex flex-wrap justify-between items-center gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-4 pt-6 border-t border-slate-200">
         <div className="flex items-center gap-2">
           <span className="text-xs font-bold text-slate-500">แท็ก:</span>
           <span className="text-[11px] font-medium bg-slate-100 text-slate-700 px-3 py-1 rounded-lg">#สระบุรีแซนด์บ็อกซ์</span>
@@ -286,36 +286,36 @@ export default function NewsDetail({
 
       {/* Related News Section */}
       {relatedNews.length > 0 && (
-        <section className="pt-12 border-t border-slate-200 space-y-6">
+        <section className="pt-12 space-y-6 border-t border-slate-200">
           <div className="flex items-center justify-between">
             <h3 className="text-xl font-black text-slate-900">ข่าวสารอื่นที่น่าสนใจ</h3>
             <button 
               onClick={() => setCurrentPage('news')} 
-              className="text-xs font-bold text-emerald-600 hover:text-emerald-700 transition"
+              className="text-xs font-bold transition text-emerald-600 hover:text-emerald-700"
             >
               ดูทั้งหมด →
             </button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
             {relatedNews.map(item => (
               <div 
                 key={item.id}
                 onClick={() => navigateToNewsDetail ? navigateToNewsDetail(item.id) : null}
-                className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs hover:shadow-md hover:border-emerald-500/30 transition duration-300 flex flex-col justify-between cursor-pointer group"
+                className="flex flex-col justify-between overflow-hidden transition duration-300 bg-white border shadow-xs cursor-pointer border-slate-200 rounded-2xl hover:shadow-md hover:border-emerald-500/30 group"
               >
                 <div>
                   <img 
                     src={item.image_url} 
                     alt={item.title} 
-                    className="w-full h-40 object-cover border-b border-slate-100 group-hover:scale-102 transition duration-300"
+                    className="object-cover w-full h-40 transition duration-300 border-b border-slate-100 group-hover:scale-102"
                   />
                   <div className="p-4 space-y-2">
                     <div className="flex items-center justify-between text-[9px] font-mono font-bold text-slate-400">
                       <span className="text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">{item.category}</span>
                       <span>{new Date(item.published_at || item.created_at).toLocaleDateString('th-TH')}</span>
                     </div>
-                    <h4 className="text-xs font-bold text-slate-800 line-clamp-2 group-hover:text-emerald-600 transition">
+                    <h4 className="text-xs font-bold transition text-slate-800 line-clamp-2 group-hover:text-emerald-600">
                       {item.title}
                     </h4>
                     <p className="text-[10px] text-slate-500 line-clamp-2 leading-relaxed">
