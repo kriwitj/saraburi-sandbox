@@ -302,11 +302,11 @@ export default function Home({
           
           <div className="space-y-6 lg:col-span-7">
             <div className="space-y-3">
-              <h2 className="flex flex-col text-4xl font-black leading-none tracking-wider md:text-6xl text-white">
+              <h2 className="flex flex-col text-4xl font-black leading-none tracking-wider text-white md:text-6xl">
                 <span className="text-emerald-400 drop-shadow-[0_0_20px_rgba(52,211,153,0.3)]">SARABURI</span>
                 <span>SANDBOX</span>
               </h2>
-              <h3 className="text-xl font-extrabold leading-snug md:text-3xl text-white">
+              <h3 className="text-xl font-extrabold leading-snug text-white md:text-3xl">
                 ต้นแบบเมืองคาร์บอนต่ำแห่งแรกของประเทศไทย
               </h3>
               <p className="max-w-xl font-mono text-xs tracking-wider md:text-sm text-slate-300">
@@ -331,7 +331,7 @@ export default function Home({
                 <Eye className="w-4 h-4" />
                 <span>เข้าสู่แดชบอร์ดเต็มรูปแบบ</span>
               </button>
-              <button onClick={() => setCurrentPage('projects')} className="flex items-center gap-2 px-6 py-3 text-xs font-bold transition duration-300 bg-transparent border border-emerald-500 hover:bg-emerald-500/10 text-white rounded-xl">
+              <button onClick={() => setCurrentPage('projects')} className="flex items-center gap-2 px-6 py-3 text-xs font-bold text-white transition duration-300 bg-transparent border border-emerald-500 hover:bg-emerald-500/10 rounded-xl">
                 <CheckCircle2 className="w-4 h-4 text-emerald-400" />
                 <span>สำรวจ 17 โครงการ</span>
               </button>
@@ -388,7 +388,7 @@ export default function Home({
                       </div>
                       <div className="flex flex-col items-center gap-1">
                         <span className="text-xs font-bold text-slate-200">
-                          ล้านตัน CO₂e <span className="text-emerald-400 font-extrabold">({carbonPct}%)</span>
+                          ล้านตัน CO₂e <span className="font-extrabold text-emerald-400">({carbonPct}%)</span>
                         </span>
                         <span className="font-mono text-[10px] text-emerald-300/80 bg-emerald-950/60 px-2.5 py-0.5 rounded-full border border-emerald-800/40">
                           (จากเป้าหมาย {targetCarbonM} ล้านตัน ภายในปี {targetYear})
@@ -452,15 +452,15 @@ export default function Home({
             <div className="bg-[#051c18]/95 backdrop-blur-xl border border-emerald-900/40 rounded-3xl p-6 shadow-2xl grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6 divide-y sm:divide-y-0 lg:divide-x divide-emerald-900/50">
               
               {/* 1. UI Pattern 1: การ์ดตัวเลขคู่ (Current vs Target Cards) - CO2 Reduction */}
-              <div className="py-2 px-2 space-y-2 lg:py-0 flex flex-col justify-between">
+              <div className="flex flex-col justify-between px-2 py-2 space-y-2 lg:py-0">
                 <div className="space-y-1">
                   <div className="flex items-baseline justify-between gap-1">
                     <span className="text-[10px] text-emerald-300 font-bold uppercase">ทำได้จริง / เป้าหมาย</span>
                     <span className="text-[10px] font-bold text-emerald-400 bg-emerald-950/80 px-1.5 py-0.5 rounded font-mono border border-emerald-800/40">{carbonPct}%</span>
                   </div>
-                  <div className="font-mono text-base font-black text-white leading-tight">
+                  <div className="font-mono text-base font-black leading-tight text-white">
                     <span className="text-emerald-400">{currentCarbon.toLocaleString()}</span>
-                    <span className="text-slate-400 text-xs font-normal"> / {targetCarbon.toLocaleString()}</span>
+                    <span className="text-xs font-normal text-slate-400"> / {targetCarbon.toLocaleString()}</span>
                   </div>
                   <span className="block text-[11px] font-bold text-emerald-100">ตัน CO₂e สะสม</span>
                   <span className="text-[9px] text-emerald-300/80 block">เป้าหมายปี {targetYear}</span>
@@ -471,80 +471,80 @@ export default function Home({
               </div>
 
               {/* 2. UI Pattern 1: การ์ดตัวเลขคู่ (Current vs Target Cards) - โครงการยุทธศาสตร์ */}
-              <div className="py-2 px-2 space-y-2 lg:py-0 flex flex-col justify-between">
+              <div className="flex flex-col justify-between px-2 py-2 space-y-2 lg:py-0">
                 <div className="space-y-1">
                   <div className="flex items-baseline justify-between gap-1">
                     <span className="text-[10px] text-emerald-300 font-bold uppercase">ความก้าวหน้า</span>
                     <span className="text-[10px] font-bold text-white bg-emerald-950/80 px-1.5 py-0.5 rounded font-mono border border-emerald-800/40">{projectsPct}%</span>
                   </div>
-                  <div className="font-mono text-base font-black text-white leading-tight">
+                  <div className="font-mono text-base font-black leading-tight text-white">
                     <span className="text-emerald-400">{activeProjects}</span>
-                    <span className="text-slate-400 text-xs font-normal"> / {totalProjects} โครงการ</span>
+                    <span className="text-xs font-normal text-slate-400"> / {totalProjects} โครงการ</span>
                   </div>
                   <span className="block text-[11px] font-bold text-emerald-100">โครงการยุทธศาสตร์</span>
                   <span className="text-[9px] text-emerald-300/80 block">ครอบคลุม 6 มิติหลัก</span>
                 </div>
                 <div className="w-full bg-emerald-950/80 rounded-full h-1.5 overflow-hidden border border-emerald-800/40 mt-1">
-                  <div className="bg-blue-400 h-full rounded-full transition-all duration-500" style={{ width: `${projectsPct}%` }} />
+                  <div className="h-full transition-all duration-500 bg-blue-400 rounded-full" style={{ width: `${projectsPct}%` }} />
                 </div>
               </div>
 
               {/* 3. UI Pattern 1: การ์ดตัวเลขคู่ (Current vs Target Cards) - พื้นที่นำร่อง */}
-              <div className="py-2 px-2 space-y-2 lg:py-0 flex flex-col justify-between">
+              <div className="flex flex-col justify-between px-2 py-2 space-y-2 lg:py-0">
                 <div className="space-y-1">
                   <div className="flex items-baseline justify-between gap-1">
                     <span className="text-[10px] text-emerald-300 font-bold uppercase">ดำเนินการแล้ว</span>
                     <span className="text-[10px] font-bold text-white bg-emerald-950/80 px-1.5 py-0.5 rounded font-mono border border-emerald-800/40">{pilotPct}%</span>
                   </div>
-                  <div className="font-mono text-base font-black text-white leading-tight">
+                  <div className="font-mono text-base font-black leading-tight text-white">
                     <span className="text-emerald-400">{pilotCurrent}</span>
-                    <span className="text-slate-400 text-xs font-normal"> / {pilotTarget} พื้นที่</span>
+                    <span className="text-xs font-normal text-slate-400"> / {pilotTarget} พื้นที่</span>
                   </div>
                   <span className="block text-[11px] font-bold text-emerald-100">พื้นที่นำร่อง</span>
                   <span className="text-[9px] text-emerald-300/80 block">13 อำเภอทั่วสระบุรี</span>
                 </div>
                 <div className="w-full bg-emerald-950/80 rounded-full h-1.5 overflow-hidden border border-emerald-800/40 mt-1">
-                  <div className="bg-amber-400 h-full rounded-full transition-all duration-500" style={{ width: `${pilotPct}%` }} />
+                  <div className="h-full transition-all duration-500 rounded-full bg-amber-400" style={{ width: `${pilotPct}%` }} />
                 </div>
               </div>
 
               {/* 4. UI Pattern 1: การ์ดตัวเลขคู่ (Current vs Target Cards) - มิติหลัก */}
-              <div className="py-2 px-2 space-y-2 lg:py-0 flex flex-col justify-between">
+              <div className="flex flex-col justify-between px-2 py-2 space-y-2 lg:py-0">
                 <div className="space-y-1">
                   <div className="flex items-baseline justify-between gap-1">
                     <span className="text-[10px] text-emerald-300 font-bold uppercase">ขับเคลื่อนครบ</span>
                     <span className="text-[10px] font-bold text-emerald-400 bg-emerald-950/80 px-1.5 py-0.5 rounded font-mono border border-emerald-800/40">{dimPct}%</span>
                   </div>
-                  <div className="font-mono text-base font-black text-white leading-tight">
+                  <div className="font-mono text-base font-black leading-tight text-white">
                     <span className="text-emerald-400">{dimCurrent}</span>
-                    <span className="text-slate-400 text-xs font-normal"> / {dimTarget} มิติ</span>
+                    <span className="text-xs font-normal text-slate-400"> / {dimTarget} มิติ</span>
                   </div>
                   <span className="block text-[11px] font-bold text-emerald-100">มิติพัฒนาคาร์บอนต่ำ</span>
                   <span className="text-[9px] text-emerald-300/80 block">ขับเคลื่อนเชิงบูรณาการ</span>
                 </div>
                 <div className="w-full bg-emerald-950/80 rounded-full h-1.5 overflow-hidden border border-emerald-800/40 mt-1">
-                  <div className="bg-emerald-400 h-full rounded-full transition-all duration-500" style={{ width: `${dimPct}%` }} />
+                  <div className="h-full transition-all duration-500 rounded-full bg-emerald-400" style={{ width: `${dimPct}%` }} />
                 </div>
               </div>
 
               {/* 5. UI Pattern 3: เลย์เอาต์เปรียบเทียบแบบ Dual-Metric (ตัวเลขคู่ขนาน) - ป่าชุมชน */}
-              <div className="py-2 px-2 space-y-2 lg:py-0 flex flex-col justify-between">
+              <div className="flex flex-col justify-between px-2 py-2 space-y-2 lg:py-0">
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between text-[10px] font-bold">
                     <span className="text-emerald-300">เป้าหมายป่าชุมชน</span>
                     <span className="text-emerald-400 font-mono text-[9px]">{forestPct}%</span>
                   </div>
                   <div className="grid grid-cols-2 gap-1.5 bg-emerald-950/60 p-2 rounded-xl border border-emerald-900/60">
-                    <div className="border-r border-emerald-800/40 pr-1">
+                    <div className="pr-1 border-r border-emerald-800/40">
                       <span className="block text-[9px] text-emerald-300 font-medium">ปัจจุบัน</span>
-                      <strong className="font-mono text-xs font-black text-emerald-400 block leading-tight">
+                      <strong className="block font-mono text-xs font-black leading-tight text-emerald-400">
                         {forestCurrent.toLocaleString()}
                       </strong>
                       <span className="text-[8px] text-slate-400">ไร่</span>
                     </div>
                     <div className="pl-1">
                       <span className="block text-[9px] text-slate-400 font-medium">เป้าหมาย</span>
-                      <strong className="font-mono text-xs font-bold text-slate-200 block leading-tight">
+                      <strong className="block font-mono text-xs font-bold leading-tight text-slate-200">
                         {forestTarget.toLocaleString()}
                       </strong>
                       <span className="text-[8px] text-slate-400">ไร่</span>
@@ -552,32 +552,32 @@ export default function Home({
                   </div>
                   <div className="flex justify-between items-center text-[9px] text-slate-300">
                     <span>ฟื้นฟูเหมืองเก่า</span>
-                    <span className="text-emerald-300 font-mono font-semibold">ขาดอีก {forestRemaining.toLocaleString()} ไร่</span>
+                    <span className="font-mono font-semibold text-emerald-300">ขาดอีก {forestRemaining.toLocaleString()} ไร่</span>
                   </div>
                 </div>
                 <div className="w-full bg-emerald-950/80 rounded-full h-1.5 overflow-hidden border border-emerald-800/40">
-                  <div className="bg-teal-400 h-full rounded-full transition-all duration-500" style={{ width: `${forestPct}%` }} />
+                  <div className="h-full transition-all duration-500 bg-teal-400 rounded-full" style={{ width: `${forestPct}%` }} />
                 </div>
               </div>
 
               {/* 6. UI Pattern 3: เลย์เอาต์เปรียบเทียบแบบ Dual-Metric (ตัวเลขคู่ขนาน) - เกษตรคาร์บอนต่ำ AWD */}
-              <div className="py-2 px-2 space-y-2 lg:py-0 flex flex-col justify-between">
+              <div className="flex flex-col justify-between px-2 py-2 space-y-2 lg:py-0">
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between text-[10px] font-bold">
                     <span className="text-emerald-300">เกษตรคาร์บอนต่ำ (AWD)</span>
                     <span className="text-emerald-400 font-mono text-[9px]">{agriPct}%</span>
                   </div>
                   <div className="grid grid-cols-2 gap-1.5 bg-emerald-950/60 p-2 rounded-xl border border-emerald-900/60">
-                    <div className="border-r border-emerald-800/40 pr-1">
+                    <div className="pr-1 border-r border-emerald-800/40">
                       <span className="block text-[9px] text-emerald-300 font-medium">ปัจจุบัน</span>
-                      <strong className="font-mono text-xs font-black text-emerald-400 block leading-tight">
+                      <strong className="block font-mono text-xs font-black leading-tight text-emerald-400">
                         {agriCurrent.toLocaleString()}
                       </strong>
                       <span className="text-[8px] text-slate-400">ไร่</span>
                     </div>
                     <div className="pl-1">
                       <span className="block text-[9px] text-slate-400 font-medium">เป้าหมาย</span>
-                      <strong className="font-mono text-xs font-bold text-slate-200 block leading-tight">
+                      <strong className="block font-mono text-xs font-bold leading-tight text-slate-200">
                         {agriTarget.toLocaleString()}
                       </strong>
                       <span className="text-[8px] text-slate-400">ไร่</span>
@@ -585,7 +585,7 @@ export default function Home({
                   </div>
                   <div className="flex justify-between items-center text-[9px] text-slate-300">
                     <span>นาเปียกสลับแห้ง</span>
-                    <span className="text-emerald-300 font-mono font-semibold">ขาดอีก {agriRemaining.toLocaleString()} ไร่</span>
+                    <span className="font-mono font-semibold text-emerald-300">ขาดอีก {agriRemaining.toLocaleString()} ไร่</span>
                   </div>
                 </div>
                 <div className="w-full bg-emerald-950/80 rounded-full h-1.5 overflow-hidden border border-emerald-800/40">
@@ -1146,13 +1146,13 @@ export default function Home({
             <div 
               key={news.id} 
               onClick={() => navigateToNewsDetail ? navigateToNewsDetail(news.id) : setShowNewsModal(news)}
-              className="flex flex-col justify-between overflow-hidden transition duration-300 bg-white border shadow-sm border-slate-200 rounded-3xl hover:border-emerald-500/30 hover:shadow-md cursor-pointer group"
+              className="flex flex-col justify-between overflow-hidden transition duration-300 bg-white border shadow-sm cursor-pointer border-slate-200 rounded-3xl hover:border-emerald-500/30 hover:shadow-md group"
             >
               <div>
                 <img 
                   src={news.image_url} 
                   alt={news.title} 
-                  className="object-cover w-full border-b h-44 border-slate-100 group-hover:scale-102 transition duration-300" 
+                  className="object-cover w-full h-56 transition duration-300 border-b border-slate-100 group-hover:scale-102" 
                 />
                 <div className="p-5 space-y-3">
                   <div className="flex justify-between items-center text-[9px] text-slate-400 font-mono font-bold">
