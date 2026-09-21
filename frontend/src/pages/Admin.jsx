@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Settings, Grid, FileText, Database, Plus, MapPin, Calendar, Users, 
-  ChevronRight, Lock, Eye, AlertCircle, Globe, Terminal, LogOut,
+  ChevronRight, ChevronLeft, Lock, Eye, AlertCircle, Globe, Terminal, LogOut,
   Pencil, Trash2, TrendingUp, Sparkles, Images, CheckCircle2, Save,
   ArrowUpRight, BarChart3, Check, RefreshCw, Loader2, Search,
   ArrowUpDown, Filter, X
@@ -128,6 +128,29 @@ export default function Admin({
 
     return list;
   }, [cmsData, cmsSearch, cmsCategoryFilter, cmsSortBy]);
+
+  // Pagination States for Admin Tables (10 items per page)
+  const ADMIN_ITEMS_PER_PAGE = 10;
+  const [cmsPage, setCmsPage] = useState(1);
+  const [projectsPage, setProjectsPage] = useState(1);
+  const [activitiesPage, setActivitiesPage] = useState(1);
+
+  // Reset CMS page whenever search, category filter, or sort changes
+  useEffect(() => {
+    setCmsPage(1);
+  }, [cmsSearch, cmsCategoryFilter, cmsSortBy]);
+
+  const cmsTotalPages = Math.ceil(processedCmsArticles.length / ADMIN_ITEMS_PER_PAGE) || 1;
+  const cmsStartIndex = (cmsPage - 1) * ADMIN_ITEMS_PER_PAGE;
+  const paginatedCmsArticles = processedCmsArticles.slice(cmsStartIndex, cmsStartIndex + ADMIN_ITEMS_PER_PAGE);
+
+  const projectsTotalPages = Math.ceil((projectsData?.length || 0) / ADMIN_ITEMS_PER_PAGE) || 1;
+  const projectsStartIndex = (projectsPage - 1) * ADMIN_ITEMS_PER_PAGE;
+  const paginatedProjects = (projectsData || []).slice(projectsStartIndex, projectsStartIndex + ADMIN_ITEMS_PER_PAGE);
+
+  const activitiesTotalPages = Math.ceil((activitiesData?.length || 0) / ADMIN_ITEMS_PER_PAGE) || 1;
+  const activitiesStartIndex = (activitiesPage - 1) * ADMIN_ITEMS_PER_PAGE;
+  const paginatedActivities = (activitiesData || []).slice(activitiesStartIndex, activitiesStartIndex + ADMIN_ITEMS_PER_PAGE);
 
   useEffect(() => {
     if (summaryData) {
@@ -806,7 +829,7 @@ export default function Admin({
                     </button>
                   </div>
                 ) : (
-                  processedCmsArticles.map(c => {
+                  paginatedCmsArticles.map(c => {
                     const pubDate = new Date(c.published_at || c.created_at || Date.now());
                     const formattedDate = pubDate.toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' });
                     const formattedTime = pubDate.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
@@ -863,6 +886,55 @@ export default function Admin({
                   })
                 )}
               </div>
+
+              {/* CMS Pagination Bar */}
+              {processedCmsArticles.length > ADMIN_ITEMS_PER_PAGE && (
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3.5 bg-slate-50 border border-slate-200/80 rounded-2xl text-xs text-slate-500">
+                  <div>
+                    แสดง <strong className="font-mono text-slate-800">{cmsStartIndex + 1}</strong> ถึง <strong className="font-mono text-slate-800">{Math.min(cmsStartIndex + ADMIN_ITEMS_PER_PAGE, processedCmsArticles.length)}</strong> จากทั้งหมด <strong className="font-mono text-slate-800">{processedCmsArticles.length}</strong> บทความ
+                  </div>
+
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => setCmsPage(p => Math.max(1, p - 1))}
+                      disabled={cmsPage === 1}
+                      className="px-2.5 py-1 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-35 disabled:pointer-events-none text-slate-700 font-bold flex items-center gap-1 transition text-[11px] shadow-2xs cursor-pointer"
+                    >
+                      <ChevronLeft className="w-3.5 h-3.5" />
+                      <span>ก่อนหน้า</span>
+                    </button>
+
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: cmsTotalPages }).map((_, i) => {
+                        const p = i + 1;
+                        const isActive = p === cmsPage;
+                        return (
+                          <button
+                            key={p}
+                            onClick={() => setCmsPage(p)}
+                            className={`w-7 h-7 rounded-lg font-mono text-xs font-bold transition flex items-center justify-center cursor-pointer ${
+                              isActive
+                                ? 'bg-emerald-600 text-white shadow-xs'
+                                : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'
+                            }`}
+                          >
+                            {p}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    <button
+                      onClick={() => setCmsPage(p => Math.min(cmsTotalPages, p + 1))}
+                      disabled={cmsPage === cmsTotalPages}
+                      className="px-2.5 py-1 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-35 disabled:pointer-events-none text-slate-700 font-bold flex items-center gap-1 transition text-[11px] shadow-2xs cursor-pointer"
+                    >
+                      <span>ถัดไป</span>
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -903,7 +975,7 @@ export default function Admin({
                         </td>
                       </tr>
                     ) : (
-                      projectsData.map(p => (
+                      paginatedProjects.map(p => (
                         <tr key={p.id} className="hover:bg-slate-50/80 transition">
                           <td className="p-3 font-mono text-slate-400">#{p.id}</td>
                           <td className="p-3 font-bold text-slate-800 max-w-xs truncate">{p.name}</td>
@@ -939,6 +1011,55 @@ export default function Admin({
                   </tbody>
                 </table>
               </div>
+
+              {/* Pagination bar for Projects */}
+              {projectsData && projectsData.length > ADMIN_ITEMS_PER_PAGE && (
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-slate-100">
+                  <div className="text-[11px] text-slate-500 font-mono">
+                    แสดง <span className="font-bold text-slate-700">{projectsStartIndex + 1}</span> - <span className="font-bold text-slate-700">{Math.min(projectsStartIndex + ADMIN_ITEMS_PER_PAGE, projectsData.length)}</span> จากทั้งหมด <span className="font-bold text-emerald-600">{projectsData.length}</span> โครงการ
+                  </div>
+
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => setProjectsPage(p => Math.max(1, p - 1))}
+                      disabled={projectsPage === 1}
+                      className="px-2.5 py-1 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-35 disabled:pointer-events-none text-slate-700 font-bold flex items-center gap-1 transition text-[11px] shadow-2xs cursor-pointer"
+                    >
+                      <ChevronLeft className="w-3.5 h-3.5" />
+                      <span>ก่อนหน้า</span>
+                    </button>
+
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: projectsTotalPages }).map((_, i) => {
+                        const p = i + 1;
+                        const isActive = p === projectsPage;
+                        return (
+                          <button
+                            key={p}
+                            onClick={() => setProjectsPage(p)}
+                            className={`w-7 h-7 rounded-lg font-mono text-xs font-bold transition flex items-center justify-center cursor-pointer ${
+                              isActive
+                                ? 'bg-emerald-600 text-white shadow-xs'
+                                : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'
+                            }`}
+                          >
+                            {p}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    <button
+                      onClick={() => setProjectsPage(p => Math.min(projectsTotalPages, p + 1))}
+                      disabled={projectsPage === projectsTotalPages}
+                      className="px-2.5 py-1 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-35 disabled:pointer-events-none text-slate-700 font-bold flex items-center gap-1 transition text-[11px] shadow-2xs cursor-pointer"
+                    >
+                      <span>ถัดไป</span>
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -958,35 +1079,90 @@ export default function Admin({
                 </button>
               </div>
               <div className="space-y-3">
-                {activitiesData.map(act => (
-                  <div key={act.id} className="p-3 bg-slate-50 border border-slate-200/60 rounded-2xl flex justify-between items-center gap-4">
-                    <div className="space-y-1">
-                      <h5 className="text-xs font-bold text-slate-800">{act.title}</h5>
-                      <div className="flex flex-wrap gap-x-4 gap-y-1 text-[9px] text-slate-400 font-mono">
-                        <span>พื้นที่: <strong className="text-slate-600">{act.location}</strong></span>
-                        <span>ลดคาร์บอน: <strong className="text-emerald-600 font-extrabold">{act.carbon_saved_co2e} ตัน CO₂e</strong></span>
+                {activitiesData.length === 0 ? (
+                  <div className="p-8 text-center text-slate-400 bg-slate-50 border border-slate-200/60 rounded-2xl">
+                    ยังไม่มีกิจกรรมความคืบหน้าในระบบ คลิก "บันทึกความคืบหน้าหน้างาน" ด้านบนเพื่อเพิ่ม
+                  </div>
+                ) : (
+                  paginatedActivities.map(act => (
+                    <div key={act.id} className="p-3 bg-slate-50 border border-slate-200/60 rounded-2xl flex justify-between items-center gap-4">
+                      <div className="space-y-1">
+                        <h5 className="text-xs font-bold text-slate-800">{act.title}</h5>
+                        <div className="flex flex-wrap gap-x-4 gap-y-1 text-[9px] text-slate-400 font-mono">
+                          <span>พื้นที่: <strong className="text-slate-600">{act.location}</strong></span>
+                          <span>ลดคาร์บอน: <strong className="text-emerald-600 font-extrabold">{act.carbon_saved_co2e} ตัน CO₂e</strong></span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-[10px] text-slate-400 font-mono mr-2">ID: #{act.id}</span>
+                        <button 
+                          onClick={() => setEditingActivity(act)}
+                          className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                          title="แก้ไข"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                        <button 
+                          onClick={() => onDeleteActivity(act.id)}
+                          className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition"
+                          title="ลบ"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span className="text-[10px] text-slate-400 font-mono mr-2">ID: #{act.id}</span>
-                      <button 
-                        onClick={() => setEditingActivity(act)}
-                        className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition"
-                        title="แก้ไข"
-                      >
-                        <Pencil className="w-3.5 h-3.5" />
-                      </button>
-                      <button 
-                        onClick={() => onDeleteActivity(act.id)}
-                        className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition"
-                        title="ลบ"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
+
+              {/* Pagination bar for Activities */}
+              {activitiesData && activitiesData.length > ADMIN_ITEMS_PER_PAGE && (
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-slate-100">
+                  <div className="text-[11px] text-slate-500 font-mono">
+                    แสดง <span className="font-bold text-slate-700">{activitiesStartIndex + 1}</span> - <span className="font-bold text-slate-700">{Math.min(activitiesStartIndex + ADMIN_ITEMS_PER_PAGE, activitiesData.length)}</span> จากทั้งหมด <span className="font-bold text-emerald-600">{activitiesData.length}</span> กิจกรรม
+                  </div>
+
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => setActivitiesPage(p => Math.max(1, p - 1))}
+                      disabled={activitiesPage === 1}
+                      className="px-2.5 py-1 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-35 disabled:pointer-events-none text-slate-700 font-bold flex items-center gap-1 transition text-[11px] shadow-2xs cursor-pointer"
+                    >
+                      <ChevronLeft className="w-3.5 h-3.5" />
+                      <span>ก่อนหน้า</span>
+                    </button>
+
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: activitiesTotalPages }).map((_, i) => {
+                        const p = i + 1;
+                        const isActive = p === activitiesPage;
+                        return (
+                          <button
+                            key={p}
+                            onClick={() => setActivitiesPage(p)}
+                            className={`w-7 h-7 rounded-lg font-mono text-xs font-bold transition flex items-center justify-center cursor-pointer ${
+                              isActive
+                                ? 'bg-emerald-600 text-white shadow-xs'
+                                : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'
+                            }`}
+                          >
+                            {p}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    <button
+                      onClick={() => setActivitiesPage(p => Math.min(activitiesTotalPages, p + 1))}
+                      disabled={activitiesPage === activitiesTotalPages}
+                      className="px-2.5 py-1 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-35 disabled:pointer-events-none text-slate-700 font-bold flex items-center gap-1 transition text-[11px] shadow-2xs cursor-pointer"
+                    >
+                      <span>ถัดไป</span>
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

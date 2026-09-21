@@ -600,7 +600,7 @@ export default function Home({
       </section>
 
       {/* INTERACTIVE MAP DASHBOARD */}
-      <section className="w-full px-6 py-4 mx-auto space-y-4 duration-300 lg:px-12 max-w-7xl h-[calc(100vh-100px)] min-h-[580px] max-h-[720px] flex flex-col justify-between scroll-reveal">
+      <section className="w-full px-4 sm:px-6 lg:px-12 py-8 sm:py-10 mx-auto space-y-6 duration-300 max-w-7xl scroll-reveal">
         
         {/* Header & Category Tabs */}
         <div className="flex flex-wrap items-center justify-between gap-6 pb-4 border-b border-slate-100">
@@ -655,7 +655,7 @@ export default function Home({
         <div className="grid items-stretch grid-cols-1 gap-8 lg:grid-cols-12">
           
           {/* Left Side: Real OpenStreetMap */}
-          <div className="lg:col-span-8 relative bg-slate-100 border border-slate-200 rounded-3xl h-[calc(100vh-260px)] min-h-[380px] max-h-[460px] overflow-hidden shadow-sm pointer-events-auto flex flex-col justify-end">
+          <div className="lg:col-span-8 relative bg-slate-100 border border-slate-200 rounded-3xl h-[360px] sm:h-[420px] lg:h-[480px] overflow-hidden shadow-sm pointer-events-auto flex flex-col justify-end">
             {/* The Leaflet OSM Container */}
             <div id="osm-map" className="absolute inset-0 z-0" />
 
@@ -866,9 +866,12 @@ export default function Home({
         </div>
 
         {/* 6 PILLARS ROW BOTTOM GRID */}
-        <div className="pt-4 space-y-4">
-          <span className="text-[10px] text-slate-400 font-mono font-bold tracking-wider block px-1">6 มิติหลัก (Pillar)</span>
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
+        <div className="pt-6 space-y-3 border-t border-slate-100">
+          <div className="flex items-center justify-between px-1">
+            <span className="text-[11px] text-slate-500 font-mono font-bold tracking-wider block">6 มิติหลัก (Pillars)</span>
+            <span className="text-[10px] text-slate-400 hidden sm:inline">คลิกเพื่อกรองสถานีตามมิติ</span>
+          </div>
+          <div className="grid grid-cols-2 gap-2.5 sm:gap-3.5 sm:grid-cols-3 lg:grid-cols-6">
             {MAP_PILLARS.map(p => {
               const PIcon = p.icon;
               const isFilterActive = activePillarFilter === p.id && mapCategory === 'pillar';
@@ -885,17 +888,17 @@ export default function Home({
                       setActivePillarFilter(p.id); // set filter
                     }
                   }}
-                  className={`p-3.5 bg-white border rounded-2xl transition duration-350 cursor-pointer flex items-center gap-3 shadow-sm select-none ${p.borderCol} ${
-                    isFilterActive ? 'ring-2 ring-emerald-500 border-emerald-400' : ''
+                  className={`p-3 bg-white border rounded-2xl transition duration-200 cursor-pointer flex items-center gap-2.5 shadow-xs select-none hover:shadow-sm hover:border-slate-300 ${p.borderCol} ${
+                    isFilterActive ? 'ring-2 ring-emerald-500 border-emerald-400 bg-emerald-50/30' : ''
                   }`}
                 >
-                  <div className={`p-2.5 text-white rounded-xl ${p.color} shrink-0`}>
+                  <div className={`p-2 text-white rounded-xl ${p.color} shrink-0`}>
                     <PIcon className="w-4 h-4" />
                   </div>
-                  <div className="overflow-hidden">
+                  <div className="overflow-hidden min-w-0 flex-1">
                     <span className="text-[8px] text-slate-400 block leading-none font-bold">มิติที่ {p.id}</span>
-                    <h5 className="text-[9px] font-black text-slate-800 leading-tight mt-1 line-clamp-2" title={p.name}>{p.name}</h5>
-                    <span className={`text-[8px] font-bold block mt-1.5 ${p.textCol}`}>{p.count} โครงการ</span>
+                    <h5 className="text-[10px] font-bold text-slate-800 leading-tight mt-0.5 line-clamp-2" title={p.name}>{p.name}</h5>
+                    <span className={`text-[8px] font-bold block mt-1 ${p.textCol}`}>{p.count} โครงการ</span>
                   </div>
                 </div>
               );
@@ -905,12 +908,12 @@ export default function Home({
       </section>
 
       {/* 6 DIMENSIONS GRID PANEL */}
-      <section className="w-full px-6 py-20 mx-auto space-y-10 lg:px-12 max-w-7xl scroll-reveal">
-        <div className="space-y-2 text-center">
-          <h3 className="text-2xl font-extrabold md:text-3xl text-slate-900">
+      <section className="w-full px-4 sm:px-6 lg:px-12 py-16 md:py-24 mx-auto space-y-10 max-w-7xl scroll-reveal border-t border-slate-100">
+        <div className="space-y-2 text-center max-w-3xl mx-auto px-2">
+          <h3 className="text-xl sm:text-2xl md:text-3xl font-black text-slate-900 tracking-tight">
             6 มิติหลัก ขับเคลื่อนสู่เมืองคาร์บอนต่ำ
           </h3>
-          <p className="text-sm text-slate-500">
+          <p className="text-xs sm:text-sm text-slate-500 leading-relaxed">
             การบริหารจัดการเชิงพื้นที่แบบบูรณาการตอบโจทย์ Net Zero ในระดับจังหวัด
           </p>
         </div>

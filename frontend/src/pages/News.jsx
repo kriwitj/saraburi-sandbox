@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { Calendar, User, Newspaper, CalendarDays, Images, ArrowRight, Search, ArrowUpDown, X, RotateCcw } from 'lucide-react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { Calendar, User, Newspaper, CalendarDays, Images, ArrowRight, Search, ArrowUpDown, X, RotateCcw, ChevronLeft, ChevronRight } from 'lucide-react';
 
 export default function News({
   cmsData = [],
@@ -11,6 +11,9 @@ export default function News({
   const [activeCategory, setActiveCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('published_desc');
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const ITEMS_PER_PAGE = 6;
 
   // Filter and Sort articles (Default: published_desc)
   const processedNews = useMemo(() => {
@@ -55,6 +58,22 @@ export default function News({
 
     return result;
   }, [cmsData, activeCategory, searchQuery, sortBy]);
+
+  // Reset to page 1 whenever category, search, or sort order changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeCategory, searchQuery, sortBy]);
+
+  const totalPages = Math.ceil(processedNews.length / ITEMS_PER_PAGE) || 1;
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const paginatedNews = processedNews.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+
+  const handlePageChange = (newPage) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      setCurrentPage(newPage);
+      window.scrollTo({ top: 180, behavior: 'smooth' });
+    }
+  };
 
   return (
     <section className="w-full px-6 py-16 mx-auto space-y-10 duration-200 lg:px-12 max-w-7xl animate-in fade-in">
@@ -178,7 +197,7 @@ export default function News({
             {searchQuery ? `ไม่พบข่าวสารที่ตรงกับคำค้นหา "${searchQuery}"` : 'ไม่พบข่าวสารหรือภาพกิจกรรมในระบบ'}
           </div>
         ) : (
-          processedNews.map(news => {
+          paginatedNews.map(news => {
             const pubDate = new Date(news.published_at || news.created_at || Date.now());
             const formattedDate = pubDate.toLocaleDateString('th-TH', { 
               year: 'numeric', 
@@ -248,6 +267,57 @@ export default function News({
           })
         )}
       </div>
+
+      {/* Pagination Controls (6 items per page) */}
+      {!isCmsLoading && processedNews.length > 0 && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-6 border-t border-slate-200 text-xs text-slate-500">
+          <div>
+            แสดง <strong className="font-mono text-slate-800">{startIndex + 1}</strong> ถึง <strong className="font-mono text-slate-800">{Math.min(startIndex + ITEMS_PER_PAGE, processedNews.length)}</strong> จากทั้งหมด <strong className="font-mono text-slate-800">{processedNews.length}</strong> ข่าวสาร
+          </div>
+
+          {totalPages > 1 && (
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-35 disabled:pointer-events-none text-slate-700 font-bold flex items-center gap-1 transition shadow-2xs cursor-pointer"
+              >
+                <ChevronLeft className="w-4 h-4" />
+                <span className="hidden sm:inline">ก่อนหน้า</span>
+              </button>
+
+              <div className="flex items-center gap-1">
+                {Array.from({ length: totalPages }).map((_, idx) => {
+                  const pageNum = idx + 1;
+                  const isActive = pageNum === currentPage;
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => handlePageChange(pageNum)}
+                      className={`w-8 h-8 rounded-xl font-mono text-xs font-bold transition flex items-center justify-center cursor-pointer ${
+                        isActive
+                          ? 'bg-emerald-600 text-white shadow-sm ring-2 ring-emerald-400/50'
+                          : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <button
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-35 disabled:pointer-events-none text-slate-700 font-bold flex items-center gap-1 transition shadow-2xs cursor-pointer"
+              >
+                <span className="hidden sm:inline">ถัดไป</span>
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
     </section>
   );
