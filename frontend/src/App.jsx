@@ -156,7 +156,7 @@ export default function App() {
         if (Array.isArray(parsed) && parsed.length > 0) return parsed;
       }
     } catch (e) {}
-    return [];
+    return initialCmsArticles;
   });
 
   const [activitiesData, setActivitiesData] = useState(() => {
@@ -267,7 +267,7 @@ export default function App() {
       const cmsRes = await fetch('/api/v1/cms');
       if (cmsRes.ok) {
         const data = await cmsRes.json();
-        if (Array.isArray(data)) {
+        if (Array.isArray(data) && data.length > 0) {
           setCmsData(prev => {
             const merged = [...data];
             for (const local of prev) {
@@ -282,7 +282,7 @@ export default function App() {
         }
       }
     } catch (err) {
-      console.warn("API error fetching CMS", err);
+      console.warn("API error fetching CMS, using fallback data", err);
     }
 
     try {

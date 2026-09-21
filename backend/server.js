@@ -294,10 +294,6 @@ let activities = [
 ];
 
 let cmsArticles = [];
-try {
-  const ds = JSON.parse(fs.readFileSync(path.join(__dirname, 'data_store.json'), 'utf-8'));
-  if (Array.isArray(ds.cmsArticles)) cmsArticles = ds.cmsArticles;
-} catch (e) {}
 
 // Helper to filter projects and activities by dimension
 const getDimensionData = (dimensionId, dimensionEng, summaryText, historicalData) => {
