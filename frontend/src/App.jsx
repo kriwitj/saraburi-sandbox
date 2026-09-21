@@ -675,6 +675,13 @@ export default function App() {
         body: JSON.stringify(payload)
       });
       if (res.ok) {
+        const serverItem = await res.json();
+        setProjectsData(prev => {
+          const updated = prev.map(p => p.id === id ? serverItem : p);
+          idbSet('sb_projects_data', updated).catch(() => {});
+          try { localStorage.setItem('sb_projects_data', JSON.stringify(updated)); } catch (e) {}
+          return updated;
+        });
         fetchData();
         return;
       }
@@ -718,6 +725,13 @@ export default function App() {
         body: JSON.stringify(payload)
       });
       if (res.ok) {
+        const serverItem = await res.json();
+        setCmsData(prev => {
+          const updated = prev.map(item => (item.id === id || (serverItem.slug && item.slug === serverItem.slug)) ? serverItem : item);
+          try { localStorage.setItem('sb_cms_data', JSON.stringify(updated)); } catch (e) {}
+          idbSet('sb_cms_data', updated).catch(() => {});
+          return updated;
+        });
         fetchData();
         return;
       }
@@ -757,6 +771,13 @@ export default function App() {
         body: JSON.stringify(payload)
       });
       if (res.ok) {
+        const serverItem = await res.json();
+        setActivitiesData(prev => {
+          const updated = prev.map(a => a.id === id ? serverItem : a);
+          idbSet('sb_activities_data', updated).catch(() => {});
+          try { localStorage.setItem('sb_activities_data', JSON.stringify(updated)); } catch (e) {}
+          return updated;
+        });
         fetchData();
         return;
       }

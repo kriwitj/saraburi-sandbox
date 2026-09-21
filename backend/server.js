@@ -75,18 +75,45 @@ async function initDb() {
         await pool.query(schemaSql);
         console.log('Database schema and seed data created successfully.');
       }
-    } else {
-      // Ensure sequences are properly aligned and columns support BIGINT
-      await pool.query(`
-        ALTER TABLE cms_articles ALTER COLUMN id TYPE BIGINT;
-        ALTER TABLE projects ALTER COLUMN id TYPE BIGINT;
-        ALTER TABLE activities ALTER COLUMN id TYPE BIGINT;
-        ALTER TABLE activities ALTER COLUMN project_id TYPE BIGINT;
-        SELECT setval(pg_get_serial_sequence('projects', 'id'), COALESCE(MAX(id), 1)) FROM projects;
-        SELECT setval(pg_get_serial_sequence('activities', 'id'), COALESCE(MAX(id), 1)) FROM activities;
-        SELECT setval(pg_get_serial_sequence('cms_articles', 'id'), COALESCE(MAX(id), 1)) FROM cms_articles;
-        SELECT setval(pg_get_serial_sequence('summary_metrics', 'id'), COALESCE(MAX(id), 1)) FROM summary_metrics;
-      `).catch(err => console.warn('Sequence alignment notice:', err.message));
+    }
+
+    // Ensure all tables and foreign keys support BIGINT independently
+    const alterQueries = [
+      'ALTER TABLE IF EXISTS cms_articles ALTER COLUMN id TYPE BIGINT',
+      'ALTER TABLE IF EXISTS projects ALTER COLUMN id TYPE BIGINT',
+      'ALTER TABLE IF EXISTS activities ALTER COLUMN id TYPE BIGINT',
+      'ALTER TABLE IF EXISTS activities ALTER COLUMN project_id TYPE BIGINT',
+      'ALTER TABLE IF EXISTS dimension_metrics ALTER COLUMN id TYPE BIGINT',
+      'ALTER TABLE IF EXISTS summary_metrics ALTER COLUMN id TYPE BIGINT'
+    ];
+    for (const q of alterQueries) {
+      try {
+        await pool.query(q);
+      } catch (err) {
+        // Ignored if column already BIGINT
+      }
+    }
+
+    // Safely align serial sequences only if the sequence exists
+    const tablesToAlign = ['projects', 'activities', 'cms_articles', 'dimension_metrics', 'summary_metrics'];
+    for (const tbl of tablesToAlign) {
+      try {
+        await pool.query(`
+          DO $$
+          DECLARE
+            seq text;
+            max_id bigint;
+          BEGIN
+            seq := pg_get_serial_sequence('${tbl}', 'id');
+            IF seq IS NOT NULL THEN
+              EXECUTE 'SELECT COALESCE(MAX(id), 1) FROM ' || quote_ident('${tbl}') INTO max_id;
+              PERFORM setval(seq, max_id, true);
+            END IF;
+          END $$;
+        `);
+      } catch (err) {
+        console.warn(`Sequence alignment notice for ${tbl}:`, err.message);
+      }
     }
 
     // Sync database state to local store backup
@@ -254,13 +281,14 @@ app.post('/api/v1/projects', async (req, res) => {
 });
 
 app.put('/api/v1/projects/:id', async (req, res) => {
-  const id = Number(req.params.id);
+  const paramId = req.params.id;
+  const id = Number(paramId);
   const { name, dimension_id, dimension_name, description, indicator, unit, target_value, current_value, budget_baht, agency, status } = req.body;
 
   if (!isDbConnected) {
-    const idx = localStore.projects.findIndex(p => p.id === id);
+    const idx = localStore.projects.findIndex(p => p.id === id || String(p.id) === paramId);
     if (idx !== -1) {
-      localStore.projects[idx] = { ...localStore.projects[idx], ...req.body, id };
+      localStore.projects[idx] = { ...localStore.projects[idx], ...req.body, id: localStore.projects[idx].id };
       saveLocalStore();
       return res.json(localStore.projects[idx]);
     }
@@ -282,7 +310,7 @@ app.put('/api/v1/projects/:id', async (req, res) => {
         agency = COALESCE($10, agency),
         status = COALESCE($11, status),
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = $12
+      WHERE id::text = $12
       RETURNING *
     `;
     const values = [
@@ -290,7 +318,7 @@ app.put('/api/v1/projects/:id', async (req, res) => {
       target_value !== undefined ? Number(target_value) : null,
       current_value !== undefined ? Number(current_value) : null,
       budget_baht !== undefined ? Number(budget_baht) : null,
-      agency, status, id
+      agency, status, paramId
     ];
     const result = await pool.query(query, values);
     if (result.rows.length === 0) {
@@ -301,33 +329,34 @@ app.put('/api/v1/projects/:id', async (req, res) => {
     res.json(updated);
   } catch (err) {
     console.error('Error updating project:', err);
-    res.status(500).json({ error: 'Failed to update project' });
+    res.status(500).json({ error: 'Failed to update project', detail: err.message });
   }
 });
 
 app.delete('/api/v1/projects/:id', async (req, res) => {
-  const id = Number(req.params.id);
+  const paramId = req.params.id;
+  const id = Number(paramId);
 
   if (!isDbConnected) {
-    const idx = localStore.projects.findIndex(p => p.id === id);
+    const idx = localStore.projects.findIndex(p => p.id === id || String(p.id) === paramId);
     if (idx !== -1) {
       const deleted = localStore.projects.splice(idx, 1);
       saveLocalStore();
       return res.json(deleted[0]);
     }
-    return res.status(404).json({ error: 'Project not found' });
+    return res.json({ id: id || paramId, deleted: true });
   }
 
   try {
-    const result = await pool.query('DELETE FROM projects WHERE id = $1 RETURNING *', [id]);
+    const result = await pool.query('DELETE FROM projects WHERE id::text = $1 RETURNING *', [paramId]);
     if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Project not found' });
+      return res.json({ id: id || paramId, deleted: true, message: 'Project deleted or not found' });
     }
     backupDbToLocal();
     res.json(mapProjectRow(result.rows[0]));
   } catch (err) {
     console.error('Error deleting project:', err);
-    res.status(500).json({ error: 'Failed to delete project' });
+    res.status(500).json({ error: 'Failed to delete project', detail: err.message });
   }
 });
 
@@ -396,20 +425,14 @@ app.get('/api/v1/cms', async (req, res) => {
 
 app.get('/api/v1/cms/:id', async (req, res) => {
   const param = req.params.id;
-  const numId = Number(param);
 
   if (!isDbConnected) {
-    const found = localStore.cmsArticles.find(c => c.id === numId || c.slug === param);
+    const found = localStore.cmsArticles.find(c => String(c.id) === param || c.slug === param);
     return found ? res.json(found) : res.status(404).json({ error: 'Article not found' });
   }
 
   try {
-    let result;
-    if (!isNaN(numId)) {
-      result = await pool.query('SELECT * FROM cms_articles WHERE id = $1 OR slug = $2 LIMIT 1', [numId, param]);
-    } else {
-      result = await pool.query('SELECT * FROM cms_articles WHERE slug = $1 LIMIT 1', [param]);
-    }
+    const result = await pool.query('SELECT * FROM cms_articles WHERE id::text = $1 OR slug = $1 LIMIT 1', [param]);
 
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Article not found' });
@@ -417,7 +440,7 @@ app.get('/api/v1/cms/:id', async (req, res) => {
     res.json(mapCmsRow(result.rows[0]));
   } catch (err) {
     console.error('Error fetching cms article detail:', err);
-    res.status(500).json({ error: 'Failed to fetch article' });
+    res.status(500).json({ error: 'Failed to fetch article', detail: err.message });
   }
 });
 
@@ -499,21 +522,43 @@ app.post('/api/v1/cms', async (req, res) => {
 });
 
 app.put('/api/v1/cms/:id', async (req, res) => {
-  const id = Number(req.params.id);
+  const paramId = req.params.id;
+  const numId = Number(paramId);
   const { title, slug, category, summary, content, image_url, gallery_images, author, published_at } = req.body;
 
   if (!isDbConnected) {
-    const idx = localStore.cmsArticles.findIndex(c => c.id === id);
+    const idx = localStore.cmsArticles.findIndex(c => c.id === numId || String(c.id) === paramId || (slug && c.slug === slug));
     if (idx !== -1) {
-      localStore.cmsArticles[idx] = { ...localStore.cmsArticles[idx], ...req.body, id, updated_at: new Date().toISOString() };
+      localStore.cmsArticles[idx] = { ...localStore.cmsArticles[idx], ...req.body, id: localStore.cmsArticles[idx].id, updated_at: new Date().toISOString() };
       saveLocalStore();
       return res.json(localStore.cmsArticles[idx]);
     }
-    return res.status(404).json({ error: 'Article not found' });
+    const newArt = {
+      id: numId || Date.now(),
+      title: title || 'Untitled',
+      slug: slug || `article-${Date.now()}`,
+      category: category || 'News',
+      summary: summary || '',
+      content: content || '',
+      image_url: image_url || '',
+      gallery_images: gallery_images || [],
+      author: author || 'Admin',
+      is_published: true,
+      published_at: published_at || new Date().toISOString(),
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+    localStore.cmsArticles.unshift(newArt);
+    saveLocalStore();
+    return res.json(newArt);
   }
 
   try {
-    const query = `
+    const galleryJson = gallery_images ? JSON.stringify(gallery_images) : null;
+    const pubDate = published_at ? new Date(published_at).toISOString() : null;
+
+    // 1. Try updating by ID (cast id::text for safety across int/bigint)
+    let updateRes = await pool.query(`
       UPDATE cms_articles SET
         title = COALESCE($1, title),
         slug = COALESCE($2, slug),
@@ -525,48 +570,75 @@ app.put('/api/v1/cms/:id', async (req, res) => {
         author = COALESCE($8, author),
         published_at = CASE WHEN $9::timestamptz IS NOT NULL THEN $9::timestamptz ELSE published_at END,
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = $10
+      WHERE id::text = $10
       RETURNING *
-    `;
-    const galleryJson = gallery_images ? JSON.stringify(gallery_images) : null;
-    const pubDate = published_at ? new Date(published_at).toISOString() : null;
-    const values = [title, slug, category, summary, content, image_url, galleryJson, author, pubDate, id];
+    `, [title, slug, category, summary, content, image_url, galleryJson, author, pubDate, paramId]);
 
-    const result = await pool.query(query, values);
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Article not found' });
+    // 2. If not found by ID (e.g., client had temporary timestamp ID like 1789975682528), try updating by slug
+    if (updateRes.rows.length === 0 && slug) {
+      updateRes = await pool.query(`
+        UPDATE cms_articles SET
+          title = COALESCE($1, title),
+          category = COALESCE($2, category),
+          summary = COALESCE($3, summary),
+          content = COALESCE($4, content),
+          image_url = COALESCE($5, image_url),
+          gallery_images = CASE WHEN $6::jsonb IS NOT NULL THEN $6::jsonb ELSE gallery_images END,
+          author = COALESCE($7, author),
+          published_at = CASE WHEN $8::timestamptz IS NOT NULL THEN $8::timestamptz ELSE published_at END,
+          updated_at = CURRENT_TIMESTAMP
+        WHERE slug = $9
+        RETURNING *
+      `, [title, category, summary, content, image_url, galleryJson, author, pubDate, slug]);
     }
+
+    // 3. If still not found, treat as an upsert (insert into database so offline/temp articles are saved)
+    if (updateRes.rows.length === 0) {
+      const finalSlug = slug || `article-${Date.now()}`;
+      await pool.query("SELECT setval(pg_get_serial_sequence('cms_articles', 'id'), COALESCE((SELECT MAX(id) FROM cms_articles), 1))").catch(() => {});
+
+      const insertRes = await pool.query(`
+        INSERT INTO cms_articles (title, slug, category, summary, content, image_url, gallery_images, author, is_published, published_at, updated_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, true, COALESCE($9::timestamptz, CURRENT_TIMESTAMP), CURRENT_TIMESTAMP)
+        RETURNING *
+      `, [title || 'Untitled', finalSlug, category || 'News', summary || '', content || '', image_url || '', galleryJson, author || 'Admin', pubDate]);
+
+      backupDbToLocal();
+      return res.json(mapCmsRow(insertRes.rows[0]));
+    }
+
     backupDbToLocal();
-    res.json(mapCmsRow(result.rows[0]));
+    res.json(mapCmsRow(updateRes.rows[0]));
   } catch (err) {
     console.error('Error updating CMS article:', err);
-    res.status(500).json({ error: 'Failed to update article' });
+    res.status(500).json({ error: 'Failed to update article', detail: err.message });
   }
 });
 
 app.delete('/api/v1/cms/:id', async (req, res) => {
-  const id = Number(req.params.id);
+  const paramId = req.params.id;
+  const numId = Number(paramId);
 
   if (!isDbConnected) {
-    const idx = localStore.cmsArticles.findIndex(c => c.id === id);
+    const idx = localStore.cmsArticles.findIndex(c => c.id === numId || String(c.id) === paramId);
     if (idx !== -1) {
       const deleted = localStore.cmsArticles.splice(idx, 1);
       saveLocalStore();
       return res.json(deleted[0]);
     }
-    return res.status(404).json({ error: 'Article not found' });
+    return res.json({ id: numId || paramId, deleted: true });
   }
 
   try {
-    const result = await pool.query('DELETE FROM cms_articles WHERE id = $1 RETURNING *', [id]);
+    const result = await pool.query('DELETE FROM cms_articles WHERE id::text = $1 RETURNING *', [paramId]);
     if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Article not found' });
+      return res.json({ id: numId || paramId, deleted: true, message: 'Article deleted or already removed' });
     }
     backupDbToLocal();
     res.json(mapCmsRow(result.rows[0]));
   } catch (err) {
     console.error('Error deleting CMS article:', err);
-    res.status(500).json({ error: 'Failed to delete article' });
+    res.status(500).json({ error: 'Failed to delete article', detail: err.message });
   }
 });
 
@@ -632,13 +704,14 @@ app.post('/api/v1/activities', async (req, res) => {
 });
 
 app.put('/api/v1/activities/:id', async (req, res) => {
-  const id = Number(req.params.id);
+  const paramId = req.params.id;
+  const id = Number(paramId);
   const { project_id, title, location, description, carbon_saved_co2e, budget_spent_baht, activity_date, image_url } = req.body;
 
   if (!isDbConnected) {
-    const idx = localStore.activities.findIndex(a => a.id === id);
+    const idx = localStore.activities.findIndex(a => a.id === id || String(a.id) === paramId);
     if (idx !== -1) {
-      localStore.activities[idx] = { ...localStore.activities[idx], ...req.body, id };
+      localStore.activities[idx] = { ...localStore.activities[idx], ...req.body, id: localStore.activities[idx].id };
       saveLocalStore();
       return res.json(localStore.activities[idx]);
     }
@@ -656,14 +729,14 @@ app.put('/api/v1/activities/:id', async (req, res) => {
         budget_spent_baht = COALESCE($6, budget_spent_baht),
         activity_date = COALESCE($7, activity_date),
         image_url = COALESCE($8, image_url)
-      WHERE id = $9
+      WHERE id::text = $9
       RETURNING *
     `;
     const values = [
       project_id ? Number(project_id) : null, title, location, description,
       carbon_saved_co2e !== undefined ? Number(carbon_saved_co2e) : null,
       budget_spent_baht !== undefined ? Number(budget_spent_baht) : null,
-      activity_date, image_url, id
+      activity_date, image_url, paramId
     ];
     const result = await pool.query(query, values);
     if (result.rows.length === 0) {
@@ -673,33 +746,34 @@ app.put('/api/v1/activities/:id', async (req, res) => {
     res.json(mapActivityRow(result.rows[0]));
   } catch (err) {
     console.error('Error updating activity:', err);
-    res.status(500).json({ error: 'Failed to update activity' });
+    res.status(500).json({ error: 'Failed to update activity', detail: err.message });
   }
 });
 
 app.delete('/api/v1/activities/:id', async (req, res) => {
-  const id = Number(req.params.id);
+  const paramId = req.params.id;
+  const id = Number(paramId);
 
   if (!isDbConnected) {
-    const idx = localStore.activities.findIndex(a => a.id === id);
+    const idx = localStore.activities.findIndex(a => a.id === id || String(a.id) === paramId);
     if (idx !== -1) {
       const deleted = localStore.activities.splice(idx, 1);
       saveLocalStore();
       return res.json(deleted[0]);
     }
-    return res.status(404).json({ error: 'Activity not found' });
+    return res.json({ id: id || paramId, deleted: true });
   }
 
   try {
-    const result = await pool.query('DELETE FROM activities WHERE id = $1 RETURNING *', [id]);
+    const result = await pool.query('DELETE FROM activities WHERE id::text = $1 RETURNING *', [paramId]);
     if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Activity not found' });
+      return res.json({ id: id || paramId, deleted: true, message: 'Activity deleted or not found' });
     }
     backupDbToLocal();
     res.json(mapActivityRow(result.rows[0]));
   } catch (err) {
     console.error('Error deleting activity:', err);
-    res.status(500).json({ error: 'Failed to delete activity' });
+    res.status(500).json({ error: 'Failed to delete activity', detail: err.message });
   }
 });
 
