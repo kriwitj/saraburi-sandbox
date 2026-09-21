@@ -795,6 +795,6 @@ app.delete('/api/v1/activities/:id', (req, res) => {
   res.status(404).json({ error: 'Activity not found' });
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`Saraburi-Sandbox API Server is running on port ${PORT}`);
 });
