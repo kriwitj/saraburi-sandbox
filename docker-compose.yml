@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   backend:
     build:
@@ -10,7 +8,9 @@ services:
       - PORT=5000
       - NODE_ENV=production
     networks:
-      - internal
+      internal:
+        aliases:
+          - saraburi_sandbox_backend
     restart: always
 
   frontend:
