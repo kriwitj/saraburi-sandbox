@@ -153,9 +153,7 @@ export default function App() {
       const stored = localStorage.getItem('sb_cms_data');
       if (stored) {
         const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed)) {
-          return parsed.filter(a => a.slug !== 'saraburi-wef-announcement' && a.slug !== 'saraburi-edible-carbon-market');
-        }
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
       }
     } catch (e) {}
     return [];
@@ -270,10 +268,17 @@ export default function App() {
       if (cmsRes.ok) {
         const data = await cmsRes.json();
         if (Array.isArray(data)) {
-          const filtered = data.filter(a => a.slug !== 'saraburi-wef-announcement' && a.slug !== 'saraburi-edible-carbon-market');
-          setCmsData(filtered);
-          try { localStorage.setItem('sb_cms_data', JSON.stringify(filtered)); } catch (e) {}
-          idbSet('sb_cms_data', filtered).catch(() => {});
+          setCmsData(prev => {
+            const merged = [...data];
+            for (const local of prev) {
+              if (!merged.some(m => m.id === local.id)) {
+                merged.unshift(local);
+              }
+            }
+            try { localStorage.setItem('sb_cms_data', JSON.stringify(merged)); } catch (e) {}
+            idbSet('sb_cms_data', merged).catch(() => {});
+            return merged;
+          });
         }
       }
     } catch (err) {
@@ -357,9 +362,8 @@ export default function App() {
 
         if (!isMounted) return;
 
-        if (Array.isArray(idbCms)) {
-          const filtered = idbCms.filter(a => a.slug !== 'saraburi-wef-announcement' && a.slug !== 'saraburi-edible-carbon-market');
-          setCmsData(filtered);
+        if (Array.isArray(idbCms) && idbCms.length > 0) {
+          setCmsData(idbCms);
         }
         if (Array.isArray(idbProj) && idbProj.length > 0) {
           setProjectsData(idbProj);
