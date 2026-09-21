@@ -14,7 +14,7 @@ export default function NewsDetail({
   const [lightboxIndex, setLightboxIndex] = useState(null); // null means closed
 
   // Find the article by ID or slug
-  const article = cmsData.find(item => item.id === Number(newsId) || item.slug === newsId) || cmsData[0];
+  const article = cmsData.find(item => item.id === Number(newsId) || item.slug === newsId);
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });

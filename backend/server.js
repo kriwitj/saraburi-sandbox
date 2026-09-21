@@ -293,45 +293,7 @@ let activities = [
   }
 ];
 
-let cmsArticles = [
-  {
-    id: 1,
-    title: 'สระบุรีแซนด์บ็อกซ์ เปิดตัวความร่วมมือระดับโลกในเวที WEF Transitioning Industrial Clusters',
-    slug: 'saraburi-wef-announcement',
-    category: 'News',
-    summary: 'สมาคมอุตสาหกรรมปูนซีเมนต์ไทยร่วมกับภาครัฐและจังหวัดสระบุรีประกาศความก้าวหน้าการเป็นเมืองคาร์บอนต่ำแห่งแรกของไทยบนเวทีโลก',
-    content: `<p>สระบุรีแซนด์บ็อกซ์ได้เข้าร่วมเครือข่ายความร่วมมือ <strong>Transitioning Industrial Clusters</strong> ของ World Economic Forum (WEF) เพื่อแลกเปลี่ยนเทคโนโลยีและดึงดูดการลงทุนสีเขียวจากต่างประเทศ โดยตั้งเป้าหมายลดการปล่อยก๊าซเรือนกระจก 5 ล้านตัน CO2e ภายในปี 2027 ด้วยโมเดลความร่วมมือ 4Ps (Public-Private-People Partnership)</p><h3>จุดเด่นของความร่วมมือระดับโลก</h3><p>โครงการนี้มุ่งเน้นการยกระดับอุตสาหกรรมปูนซีเมนต์และพลังงานสะอาดในพื้นที่จังหวัดสระบุรีให้เป็นต้นแบบสากล โดยประสานความร่วมมือระหว่างภาครัฐ เอกชน และสถาบันการศึกษาระดับโลก</p><blockquote>"สระบุรีแซนด์บ็อกซ์เป็นหนึ่งในตัวอย่างความสำเร็จของการร่วมมือ Area-based ที่ชัดเจนและนำไปสู่การปฏิบัติจริงในภูมิภาคอาเซียน"</blockquote><p>นอกจากนี้ ยังมีการผลักดันนวัตกรรมการใช้พลังงานแสงอาทิตย์ การนำขยะชุมชนมาแปรรูปเป็นพลังงานทดแทน (RDF) และการเพิ่มพื้นที่ป่าชุมชนเพื่อกักเก็บคาร์บอนอย่างยั่งยืน</p>`,
-    image_url: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=1200&q=80',
-    gallery_images: [
-      'https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=1200&q=80',
-      'https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?auto=format&fit=crop&w=1200&q=80',
-      'https://images.unsplash.com/photo-1513836279014-a89f7a76ae86?auto=format&fit=crop&w=1200&q=80'
-    ],
-    author: 'แอดมินประชาสัมพันธ์',
-    is_published: true,
-    published_at: '2026-07-01T08:00:00.000Z',
-    created_at: '2026-07-01T08:00:00.000Z',
-    updated_at: '2026-07-01T08:00:00.000Z'
-  },
-  {
-    id: 2,
-    title: 'ก้าวสำคัญ "สระบุรีแซนด์บ็อกซ์กินได้" ผลักดันระบบคาร์บอนมาร์เก็ตท้องถิ่นเพื่อสร้างรายได้ให้ชุมชน',
-    slug: 'saraburi-edible-carbon-market',
-    category: 'Announcement',
-    summary: 'แผนขับเคลื่อนปี 2569 เน้นเศรษฐกิจฐานรากจากการขายคาร์บอนเครดิตภาคเกษตรและป่าชุมชนให้ชาวบ้านสัมผัสได้จริง',
-    content: `<p>กระทรวงทรัพยากรธรรมชาติฯ ร่วมกับ TGO และจังหวัดสระบุรี นำร่องโครงการ <strong>"สระบุรีแซนด์บ็อกซ์กินได้"</strong> พัฒนากลไกการซื้อขายคาร์บอนเครดิตผ่านโครงการนาเปียกสลับแห้ง (AWD) และระบบป่าชุมชน 45 แห่งในพื้นที่ เพื่อนำผลตอบแทนกลับคืนเป็นรายได้และสิทธิประโยชน์โดยตรงกับชุมชนในพื้นที่</p><h3>ประโยชน์ที่ชุมชนได้รับโดยตรง</h3><ul><li>รายได้เสริมจากการขายคาร์บอนเครดิตภาคการเกษตรและการฟื้นฟูป่า</li><li>การลดต้นทุนค่าน้ำมันและน้ำในการทำนาข้าวด้วยวิธี AWD</li><li>การสร้างแหล่งท่องเที่ยวเชิงอนุรักษ์และตลาดสินค้าคาร์บอนต่ำในชุมชน</li></ul><p>โดยมีเป้าหมายขยายผลให้ครอบคลุมพื้นที่เกษตรกรรม 50,000 ไร่ และป่าชุมชน 15,000 ไร่ ทั่วจังหวัดสระบุรี</p>`,
-    image_url: 'https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?auto=format&fit=crop&w=1200&q=80',
-    gallery_images: [
-      'https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?auto=format&fit=crop&w=1200&q=80',
-      'https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=1200&q=80'
-    ],
-    author: 'แอดมินประชาสัมพันธ์',
-    is_published: true,
-    published_at: '2026-07-15T10:30:00.000Z',
-    created_at: '2026-07-15T10:30:00.000Z',
-    updated_at: '2026-07-15T10:30:00.000Z'
-  }
-];
+let cmsArticles = [];
 
 // Helper to filter projects and activities by dimension
 const getDimensionData = (dimensionId, dimensionEng, summaryText, historicalData) => {

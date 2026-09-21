@@ -1134,57 +1134,63 @@ export default function Home({
           </button>
         </div>
 
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {[...cmsData]
-            .sort((a, b) => {
-              const dateA = new Date(a.published_at || a.created_at || 0).getTime();
-              const dateB = new Date(b.published_at || b.created_at || 0).getTime();
-              return dateB - dateA;
-            })
-            .slice(0, 6)
-            .map(news => (
-            <div 
-              key={news.id} 
-              onClick={() => navigateToNewsDetail ? navigateToNewsDetail(news.id) : setShowNewsModal(news)}
-              className="flex flex-col justify-between overflow-hidden transition duration-300 bg-white border shadow-sm cursor-pointer border-slate-200 rounded-3xl hover:border-emerald-500/30 hover:shadow-md group"
-            >
-              <div>
-                <img 
-                  src={news.image_url} 
-                  alt={news.title} 
-                  className="object-cover w-full h-56 transition duration-300 border-b border-slate-100 group-hover:scale-102" 
-                />
-                <div className="p-5 space-y-3">
-                  <div className="flex justify-between items-center text-[9px] text-slate-400 font-mono font-bold">
-                    <span className="bg-emerald-50 text-emerald-600 px-2.5 py-0.5 rounded-lg border border-emerald-100">{news.category}</span>
-                    <span>{new Date(news.published_at || news.created_at || Date.now()).toLocaleDateString('th-TH')}</span>
+        {cmsData.length === 0 ? (
+          <div className="py-12 text-xs text-center border border-dashed border-slate-200 rounded-3xl text-slate-400">
+            ยังไม่มีข่าวสารหรือภาพกิจกรรมที่เผยแพร่ในขณะนี้
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {[...cmsData]
+              .sort((a, b) => {
+                const dateA = new Date(a.published_at || a.created_at || 0).getTime();
+                const dateB = new Date(b.published_at || b.created_at || 0).getTime();
+                return dateB - dateA;
+              })
+              .slice(0, 6)
+              .map(news => (
+              <div 
+                key={news.id} 
+                onClick={() => navigateToNewsDetail ? navigateToNewsDetail(news.id) : setShowNewsModal(news)}
+                className="flex flex-col justify-between overflow-hidden transition duration-300 bg-white border shadow-sm cursor-pointer border-slate-200 rounded-3xl hover:border-emerald-500/30 hover:shadow-md group"
+              >
+                <div>
+                  <img 
+                    src={news.image_url} 
+                    alt={news.title} 
+                    className="object-cover w-full h-56 transition duration-300 border-b border-slate-100 group-hover:scale-102" 
+                  />
+                  <div className="p-5 space-y-3">
+                    <div className="flex justify-between items-center text-[9px] text-slate-400 font-mono font-bold">
+                      <span className="bg-emerald-50 text-emerald-600 px-2.5 py-0.5 rounded-lg border border-emerald-100">{news.category}</span>
+                      <span>{new Date(news.published_at || news.created_at || Date.now()).toLocaleDateString('th-TH')}</span>
+                    </div>
+                    <h4 
+                      className="text-xs font-bold leading-normal transition text-slate-800 line-clamp-2 group-hover:text-emerald-600"
+                    >
+                      {news.title}
+                    </h4>
+                    <p className="text-[10px] text-slate-500 leading-relaxed line-clamp-3">
+                      {news.summary}
+                    </p>
                   </div>
-                  <h4 
-                    className="text-xs font-bold leading-normal transition text-slate-800 line-clamp-2 group-hover:text-emerald-600"
+                </div>
+
+                <div className="p-5 pt-0">
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (navigateToNewsDetail) navigateToNewsDetail(news.id);
+                      else setShowNewsModal(news);
+                    }}
+                    className="w-full text-center py-2.5 bg-emerald-50 hover:bg-emerald-600 border border-emerald-200 hover:border-emerald-600 rounded-xl text-[10px] font-bold text-emerald-700 hover:text-white transition duration-200"
                   >
-                    {news.title}
-                  </h4>
-                  <p className="text-[10px] text-slate-500 leading-relaxed line-clamp-3">
-                    {news.summary}
-                  </p>
+                    อ่านรายละเอียดข่าวฉบับเต็ม →
+                  </button>
                 </div>
               </div>
-
-              <div className="p-5 pt-0">
-                <button 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (navigateToNewsDetail) navigateToNewsDetail(news.id);
-                    else setShowNewsModal(news);
-                  }}
-                  className="w-full text-center py-2.5 bg-emerald-50 hover:bg-emerald-600 border border-emerald-200 hover:border-emerald-600 rounded-xl text-[10px] font-bold text-emerald-700 hover:text-white transition duration-200"
-                >
-                  อ่านรายละเอียดข่าวฉบับเต็ม →
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </section>
 
       {/* GLOBAL PARTNERSHIPS SLIDER SECTION */}

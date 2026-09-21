@@ -153,10 +153,12 @@ export default function App() {
       const stored = localStorage.getItem('sb_cms_data');
       if (stored) {
         const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed)) {
+          return parsed.filter(a => a.slug !== 'saraburi-wef-announcement' && a.slug !== 'saraburi-edible-carbon-market');
+        }
       }
     } catch (e) {}
-    return initialCmsArticles;
+    return [];
   });
 
   const [activitiesData, setActivitiesData] = useState(() => {
@@ -267,29 +269,15 @@ export default function App() {
       const cmsRes = await fetch('/api/v1/cms');
       if (cmsRes.ok) {
         const data = await cmsRes.json();
-        if (Array.isArray(data) && data.length > 0) {
-          setCmsData(prev => {
-            const merged = [...data];
-            for (const local of prev) {
-              const idx = merged.findIndex(m => m.id === local.id);
-              if (idx === -1) {
-                // Keep local article that was created offline or pending sync
-                merged.unshift(local);
-              } else {
-                // If local article has more gallery images or local content, keep local version
-                const localImages = local.gallery_images?.length || 0;
-                const serverImages = merged[idx].gallery_images?.length || 0;
-                if (localImages > serverImages) {
-                  merged[idx] = local;
-                }
-              }
-            }
-            return merged;
-          });
+        if (Array.isArray(data)) {
+          const filtered = data.filter(a => a.slug !== 'saraburi-wef-announcement' && a.slug !== 'saraburi-edible-carbon-market');
+          setCmsData(filtered);
+          try { localStorage.setItem('sb_cms_data', JSON.stringify(filtered)); } catch (e) {}
+          idbSet('sb_cms_data', filtered).catch(() => {});
         }
       }
     } catch (err) {
-      console.warn("API error fetching CMS, using fallback data", err);
+      console.warn("API error fetching CMS", err);
     }
 
     try {
@@ -369,8 +357,9 @@ export default function App() {
 
         if (!isMounted) return;
 
-        if (Array.isArray(idbCms) && idbCms.length > 0) {
-          setCmsData(idbCms);
+        if (Array.isArray(idbCms)) {
+          const filtered = idbCms.filter(a => a.slug !== 'saraburi-wef-announcement' && a.slug !== 'saraburi-edible-carbon-market');
+          setCmsData(filtered);
         }
         if (Array.isArray(idbProj) && idbProj.length > 0) {
           setProjectsData(idbProj);
