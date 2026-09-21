@@ -50,6 +50,7 @@ export default function Home({
   summaryData,
   projectsData,
   cmsData,
+  isCmsLoading = false,
   setShowNewsModal,
   setCurrentPage,
   setSelectedDimension,
@@ -1134,7 +1135,20 @@ export default function Home({
           </button>
         </div>
 
-        {cmsData.length === 0 ? (
+        {isCmsLoading ? (
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="overflow-hidden bg-white border shadow-sm border-slate-200 rounded-3xl animate-pulse">
+                <div className="w-full h-56 bg-slate-200" />
+                <div className="p-5 space-y-3">
+                  <div className="w-20 h-4 rounded bg-slate-200" />
+                  <div className="w-full h-5 rounded bg-slate-200" />
+                  <div className="w-3/4 h-4 rounded bg-slate-100" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : cmsData.length === 0 ? (
           <div className="py-12 text-xs text-center border border-dashed border-slate-200 rounded-3xl text-slate-400">
             ยังไม่มีข่าวสารหรือภาพกิจกรรมที่เผยแพร่ในขณะนี้
           </div>

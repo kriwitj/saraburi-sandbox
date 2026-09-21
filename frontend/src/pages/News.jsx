@@ -3,6 +3,7 @@ import { Calendar, User, Newspaper, CalendarDays, Images, ArrowRight, Search, Ar
 
 export default function News({
   cmsData = [],
+  isCmsLoading = false,
   showNewsModal,
   setShowNewsModal,
   navigateToNewsDetail
@@ -161,9 +162,20 @@ export default function News({
 
       {/* Grid: News lists */}
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {processedNews.length === 0 ? (
+        {isCmsLoading ? (
+          Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="flex flex-col overflow-hidden bg-white border shadow-sm border-slate-200 rounded-2xl animate-pulse">
+              <div className="w-full h-56 bg-slate-200" />
+              <div className="p-5 space-y-3">
+                <div className="w-24 h-4 rounded bg-slate-200" />
+                <div className="w-full h-5 rounded bg-slate-200" />
+                <div className="w-4/5 h-4 rounded bg-slate-100" />
+              </div>
+            </div>
+          ))
+        ) : processedNews.length === 0 ? (
           <div className="py-16 text-xs text-center border border-dashed col-span-full text-slate-400 border-slate-200 rounded-3xl">
-            {searchQuery ? `ไม่พบข่าวสารที่ตรงกับคำค้นหา "${searchQuery}"` : 'ไม่พบข่าวสารหรือภาพกิจกรรมในหมวดหมู่นี้'}
+            {searchQuery ? `ไม่พบข่าวสารที่ตรงกับคำค้นหา "${searchQuery}"` : 'ไม่พบข่าวสารหรือภาพกิจกรรมในระบบ'}
           </div>
         ) : (
           processedNews.map(news => {

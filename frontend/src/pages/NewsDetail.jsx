@@ -7,6 +7,7 @@ import {
 export default function NewsDetail({
   newsId,
   cmsData = [],
+  isCmsLoading = false,
   setCurrentPage,
   navigateToNewsDetail
 }) {
@@ -19,6 +20,16 @@ export default function NewsDetail({
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [newsId]);
+
+  if (isCmsLoading && !article) {
+    return (
+      <div className="max-w-4xl px-6 py-24 mx-auto space-y-6 text-center animate-pulse">
+        <div className="w-1/3 h-8 mx-auto rounded-xl bg-slate-200" />
+        <div className="w-1/2 h-4 mx-auto rounded-lg bg-slate-100" />
+        <div className="w-full h-72 rounded-2xl bg-slate-200" />
+      </div>
+    );
+  }
 
   if (!article) {
     return (

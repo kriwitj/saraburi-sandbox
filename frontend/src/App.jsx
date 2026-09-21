@@ -148,16 +148,8 @@ export default function App() {
     return initialProjects;
   });
 
-  const [cmsData, setCmsData] = useState(() => {
-    try {
-      const stored = localStorage.getItem('sb_cms_data');
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      }
-    } catch (e) {}
-    return initialCmsArticles;
-  });
+  const [cmsData, setCmsData] = useState([]);
+  const [isCmsLoading, setIsCmsLoading] = useState(true);
 
   const [activitiesData, setActivitiesData] = useState(() => {
     try {
@@ -258,6 +250,7 @@ export default function App() {
     }
 
     try {
+      setIsCmsLoading(true);
       const cmsRes = await fetch('/api/v1/cms');
       if (cmsRes.ok) {
         const data = await cmsRes.json();
@@ -269,6 +262,8 @@ export default function App() {
       }
     } catch (err) {
       console.warn("API error fetching CMS, using cached data", err);
+    } finally {
+      setIsCmsLoading(false);
     }
 
     try {
@@ -344,9 +339,7 @@ export default function App() {
 
         if (!isMounted) return;
 
-        if (Array.isArray(idbCms) && idbCms.length > 0) {
-          setCmsData(idbCms);
-        }
+
         if (Array.isArray(idbProj) && idbProj.length > 0) {
           setProjectsData(idbProj);
         }
@@ -824,6 +817,7 @@ export default function App() {
             summaryData={summaryData}
             projectsData={projectsData}
             cmsData={cmsData}
+            isCmsLoading={isCmsLoading}
             setShowNewsModal={setShowNewsModal}
             setCurrentPage={setCurrentPage}
             setSelectedDimension={setSelectedDimension}
@@ -878,6 +872,7 @@ export default function App() {
         {currentPage === 'news' && (
           <News 
             cmsData={cmsData}
+            isCmsLoading={isCmsLoading}
             showNewsModal={showNewsModal}
             setShowNewsModal={setShowNewsModal}
             navigateToNewsDetail={navigateToNewsDetail}
@@ -888,6 +883,7 @@ export default function App() {
           <NewsDetail 
             newsId={selectedNewsId}
             cmsData={cmsData}
+            isCmsLoading={isCmsLoading}
             setCurrentPage={setCurrentPage}
             navigateToNewsDetail={navigateToNewsDetail}
           />
