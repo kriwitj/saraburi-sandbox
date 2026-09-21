@@ -208,7 +208,7 @@ INSERT INTO summary_metrics (id, key, data) VALUES
 ON CONFLICT (key) DO NOTHING;
 
 -- Synchronize sequences so next auto-increments start after seeded max ids
-SELECT setval('projects_id_seq', COALESCE((SELECT MAX(id) FROM projects), 1));
-SELECT setval('activities_id_seq', COALESCE((SELECT MAX(id) FROM activities), 1));
-SELECT setval('cms_articles_id_seq', COALESCE((SELECT MAX(id) FROM cms_articles), 1));
-SELECT setval('summary_metrics_id_seq', COALESCE((SELECT MAX(id) FROM summary_metrics), 1));
+SELECT setval(pg_get_serial_sequence('projects', 'id'), COALESCE(MAX(id), 1)) FROM projects;
+SELECT setval(pg_get_serial_sequence('activities', 'id'), COALESCE(MAX(id), 1)) FROM activities;
+SELECT setval(pg_get_serial_sequence('cms_articles', 'id'), COALESCE(MAX(id), 1)) FROM cms_articles;
+SELECT setval(pg_get_serial_sequence('summary_metrics', 'id'), COALESCE(MAX(id), 1)) FROM summary_metrics;
