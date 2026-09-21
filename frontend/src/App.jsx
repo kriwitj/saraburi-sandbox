@@ -241,68 +241,48 @@ export default function App() {
   const [projectSearch, setProjectSearch] = useState('');
   const [projectFilterDimension, setProjectFilterDimension] = useState('all');
 
-  // Load backend data dynamically with fallback protection and smart merge
+  // Load backend data dynamically from PostgreSQL
   const fetchData = async () => {
     try {
       const projRes = await fetch('/api/v1/projects');
       if (projRes.ok) {
         const data = await projRes.json();
-        if (Array.isArray(data) && data.length > 0) {
-          setProjectsData(prev => {
-            const merged = [...data];
-            for (const local of prev) {
-              if (!merged.some(m => m.id === local.id)) {
-                merged.unshift(local);
-              }
-            }
-            return merged;
-          });
+        if (Array.isArray(data)) {
+          setProjectsData(data);
+          try { localStorage.setItem('sb_projects_data', JSON.stringify(data)); } catch (e) {}
+          idbSet('sb_projects_data', data).catch(() => {});
         }
       }
     } catch (err) {
-      console.warn("API error fetching projects, using fallback data", err);
+      console.warn("API error fetching projects, using cached data", err);
     }
 
     try {
       const cmsRes = await fetch('/api/v1/cms');
       if (cmsRes.ok) {
         const data = await cmsRes.json();
-        if (Array.isArray(data) && data.length > 0) {
-          setCmsData(prev => {
-            const merged = [...data];
-            for (const local of prev) {
-              if (!merged.some(m => m.id === local.id)) {
-                merged.unshift(local);
-              }
-            }
-            try { localStorage.setItem('sb_cms_data', JSON.stringify(merged)); } catch (e) {}
-            idbSet('sb_cms_data', merged).catch(() => {});
-            return merged;
-          });
+        if (Array.isArray(data)) {
+          setCmsData(data);
+          try { localStorage.setItem('sb_cms_data', JSON.stringify(data)); } catch (e) {}
+          idbSet('sb_cms_data', data).catch(() => {});
         }
       }
     } catch (err) {
-      console.warn("API error fetching CMS, using fallback data", err);
+      console.warn("API error fetching CMS, using cached data", err);
     }
 
     try {
       const actRes = await fetch('/api/v1/activities');
       if (actRes.ok) {
         const data = await actRes.json();
-        if (Array.isArray(data) && data.length > 0) {
-          setActivitiesData(prev => {
-            const merged = [...data];
-            for (const local of prev) {
-              if (!merged.some(m => m.id === local.id)) {
-                merged.unshift(local);
-              }
-            }
-            return merged;
-          });
+        if (Array.isArray(data)) {
+          setActivitiesData(data);
+          try { localStorage.setItem('sb_activities_data', JSON.stringify(data)); } catch (e) {}
+          idbSet('sb_activities_data', data).catch(() => {});
         }
       }
     } catch (err) {
-      console.warn("API error fetching activities, using fallback data", err);
+      console.warn("API error fetching activities, using cached data", err);
     }
 
     try {
@@ -311,10 +291,12 @@ export default function App() {
         const data = await sumRes.json();
         if (data && typeof data === 'object') {
           setSummaryData(data);
+          try { localStorage.setItem('sb_summary_data', JSON.stringify(data)); } catch (e) {}
+          idbSet('sb_summary_data', data).catch(() => {});
         }
       }
     } catch (err) {
-      console.warn("API error fetching summary, using fallback data", err);
+      console.warn("API error fetching summary, using cached data", err);
     }
   };
 

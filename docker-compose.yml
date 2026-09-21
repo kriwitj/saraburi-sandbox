@@ -1,4 +1,23 @@
 services:
+  db:
+    image: postgres:16-alpine
+    container_name: saraburi_sandbox_db
+    restart: always
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB:-saraburi_sandbox}
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-saraburi_sandbox_secret}
+    volumes:
+      - saraburi_sandbox_pgdata:/var/lib/postgresql/data
+      - ./backend/schema.sql:/docker-entrypoint-initdb.d/01_init.sql:ro
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-saraburi_sandbox}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   backend:
     build:
       context: ./backend
@@ -7,12 +26,21 @@ services:
     environment:
       - PORT=5000
       - NODE_ENV=production
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-saraburi_sandbox_secret}@saraburi_sandbox_db:5432/${POSTGRES_DB:-saraburi_sandbox}
+      - PGHOST=saraburi_sandbox_db
+      - PGPORT=5432
+      - PGUSER=${POSTGRES_USER:-postgres}
+      - PGPASSWORD=${POSTGRES_PASSWORD:-saraburi_sandbox_secret}
+      - PGDATABASE=${POSTGRES_DB:-saraburi_sandbox}
     volumes:
       - ./backend/data_store.json:/app/data_store.json
     networks:
       internal:
         aliases:
           - saraburi_sandbox_backend
+    depends_on:
+      db:
+        condition: service_healthy
     restart: always
 
   frontend:
@@ -47,3 +75,7 @@ networks:
     external: true
   internal:
     driver: bridge
+
+volumes:
+  saraburi_sandbox_pgdata:
+    name: saraburi_sandbox_pgdata
