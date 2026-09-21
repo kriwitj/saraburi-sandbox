@@ -534,10 +534,11 @@ export default function App() {
 
     // 2. Sync to Backend API
     try {
+      const { id: _ignoreId, ...apiPayload } = payload;
       const res = await fetch('/api/v1/projects', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(apiPayload)
       });
       if (res.ok) {
         const serverItem = await res.json();
@@ -582,12 +583,13 @@ export default function App() {
     setShowAddNewsModal(false);
     setNewNews({ title: '', category: 'News', summary: '', content: '', author: '', image_url: '', gallery_images: [] });
 
-    // 2. Sync to Backend API
+    // 2. Sync to Backend API (strip temporary client id so database assigns sequence id)
     try {
+      const { id: _ignoreId, ...apiPayload } = newArticle;
       const res = await fetch('/api/v1/cms', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newArticle)
+        body: JSON.stringify(apiPayload)
       });
       if (res.ok) {
         const serverArticle = await res.json();
@@ -623,10 +625,11 @@ export default function App() {
 
     // 2. Sync to Backend API
     try {
+      const { id: _ignoreId, ...apiPayload } = newAct;
       const res = await fetch('/api/v1/activities', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newActivity)
+        body: JSON.stringify(apiPayload)
       });
       if (res.ok) {
         const serverAct = await res.json();

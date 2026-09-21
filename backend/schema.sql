@@ -2,7 +2,7 @@
 
 -- 1. CMS Management Module
 CREATE TABLE IF NOT EXISTS cms_articles (
-    id SERIAL PRIMARY KEY,
+    id BIGSERIAL PRIMARY KEY,
     title VARCHAR(255) NOT NULL,
     slug VARCHAR(255) UNIQUE NOT NULL,
     category VARCHAR(100) NOT NULL, -- e.g., 'News', 'Announcement', 'Activity'
@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS cms_articles (
 
 -- 2. Project Management Module (17 subprojects)
 CREATE TABLE IF NOT EXISTS projects (
-    id SERIAL PRIMARY KEY,
+    id BIGSERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     dimension_id INT NOT NULL, -- 1 to 6
     dimension_name VARCHAR(100) NOT NULL,
@@ -37,8 +37,8 @@ CREATE TABLE IF NOT EXISTS projects (
 
 -- 3. Activity Tracking Module (Activities/Logs under projects)
 CREATE TABLE IF NOT EXISTS activities (
-    id SERIAL PRIMARY KEY,
-    project_id INT REFERENCES projects(id) ON DELETE CASCADE,
+    id BIGSERIAL PRIMARY KEY,
+    project_id BIGINT REFERENCES projects(id) ON DELETE CASCADE,
     title VARCHAR(255) NOT NULL,
     location VARCHAR(255) NOT NULL, -- Sub-district / District in Saraburi
     description TEXT,
@@ -51,7 +51,7 @@ CREATE TABLE IF NOT EXISTS activities (
 
 -- 4. Dimension Summary Metrics for Dashboard / Power BI Integration
 CREATE TABLE IF NOT EXISTS dimension_metrics (
-    id SERIAL PRIMARY KEY,
+    id BIGSERIAL PRIMARY KEY,
     dimension_id INT NOT NULL,
     dimension_name VARCHAR(100) NOT NULL,
     metric_key VARCHAR(100) NOT NULL UNIQUE, -- e.g., 'cement_tis2594_share'
@@ -64,7 +64,7 @@ CREATE TABLE IF NOT EXISTS dimension_metrics (
 
 -- 5. Platform Summary Metrics Module
 CREATE TABLE IF NOT EXISTS summary_metrics (
-    id SERIAL PRIMARY KEY,
+    id BIGSERIAL PRIMARY KEY,
     key VARCHAR(100) NOT NULL UNIQUE,
     data JSONB NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP

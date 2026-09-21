@@ -76,12 +76,16 @@ async function initDb() {
         console.log('Database schema and seed data created successfully.');
       }
     } else {
-      // Ensure sequences are properly aligned
+      // Ensure sequences are properly aligned and columns support BIGINT
       await pool.query(`
-        SELECT setval('projects_id_seq', COALESCE((SELECT MAX(id) FROM projects), 1));
-        SELECT setval('activities_id_seq', COALESCE((SELECT MAX(id) FROM activities), 1));
-        SELECT setval('cms_articles_id_seq', COALESCE((SELECT MAX(id) FROM cms_articles), 1));
-        SELECT setval('summary_metrics_id_seq', COALESCE((SELECT MAX(id) FROM summary_metrics), 1));
+        ALTER TABLE cms_articles ALTER COLUMN id TYPE BIGINT;
+        ALTER TABLE projects ALTER COLUMN id TYPE BIGINT;
+        ALTER TABLE activities ALTER COLUMN id TYPE BIGINT;
+        ALTER TABLE activities ALTER COLUMN project_id TYPE BIGINT;
+        SELECT setval(pg_get_serial_sequence('projects', 'id'), COALESCE(MAX(id), 1)) FROM projects;
+        SELECT setval(pg_get_serial_sequence('activities', 'id'), COALESCE(MAX(id), 1)) FROM activities;
+        SELECT setval(pg_get_serial_sequence('cms_articles', 'id'), COALESCE(MAX(id), 1)) FROM cms_articles;
+        SELECT setval(pg_get_serial_sequence('summary_metrics', 'id'), COALESCE(MAX(id), 1)) FROM summary_metrics;
       `).catch(err => console.warn('Sequence alignment notice:', err.message));
     }
 
@@ -423,14 +427,19 @@ app.post('/api/v1/cms', async (req, res) => {
     return res.status(400).json({ error: 'Missing required CMS fields.' });
   }
 
-  const slug = req.body.slug || title.toLowerCase().replace(/[^a-z0-9\u0E00-\u0E7F]+/g, '-').replace(/(^-|-$)+/g, '') || `news-${Date.now()}`;
+  // Treat IDs > 100 million (like Date.now() timestamps from client) as new records without explicit ID
+  const numId = Number(id);
+  const isExistingDbId = !isNaN(numId) && numId > 0 && numId < 100000000;
+
+  let baseSlug = req.body.slug || title.toLowerCase().replace(/[^a-z0-9\u0E00-\u0E7F]+/g, '-').replace(/(^-|-$)+/g, '') || `news-${Date.now()}`;
+  let slug = baseSlug;
   const galleryJson = JSON.stringify(gallery_images || []);
   const coverUrl = image_url || (gallery_images && gallery_images.length > 0 ? (typeof gallery_images[0] === 'string' ? gallery_images[0] : gallery_images[0].url) : 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=800&q=80');
   const pubDate = published_at ? new Date(published_at).toISOString() : new Date().toISOString();
 
   if (!isDbConnected) {
     const newArt = {
-      id: id ? Number(id) : ((localStore.cmsArticles.length > 0 ? Math.max(...localStore.cmsArticles.map(c => c.id)) : 0) + 1),
+      id: isExistingDbId ? numId : ((localStore.cmsArticles.length > 0 ? Math.max(...localStore.cmsArticles.map(c => c.id)) : 0) + 1),
       title, slug, category, summary, content, image_url: coverUrl, gallery_images: gallery_images || [],
       author: author || 'Admin', is_published: true, published_at: pubDate, created_at: pubDate, updated_at: pubDate
     };
@@ -442,8 +451,14 @@ app.post('/api/v1/cms', async (req, res) => {
   }
 
   try {
-    // If ID is provided, perform idempotent upsert
-    if (id) {
+    // Avoid slug collisions
+    const slugCheck = await pool.query('SELECT id FROM cms_articles WHERE slug = $1', [slug]);
+    if (slugCheck.rows.length > 0 && (!isExistingDbId || slugCheck.rows[0].id !== numId)) {
+      slug = `${baseSlug}-${Date.now().toString().slice(-4)}`;
+    }
+
+    // If a legitimate existing database ID is provided, perform idempotent upsert
+    if (isExistingDbId) {
       const upsertQuery = `
         INSERT INTO cms_articles (id, title, slug, category, summary, content, image_url, gallery_images, author, is_published, published_at, updated_at)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9, true, $10, CURRENT_TIMESTAMP)
@@ -460,11 +475,14 @@ app.post('/api/v1/cms', async (req, res) => {
           updated_at = CURRENT_TIMESTAMP
         RETURNING *
       `;
-      const result = await pool.query(upsertQuery, [Number(id), title, slug, category, summary, content, coverUrl, galleryJson, author || 'Admin', pubDate]);
-      await pool.query("SELECT setval('cms_articles_id_seq', (SELECT MAX(id) FROM cms_articles))").catch(() => {});
+      const result = await pool.query(upsertQuery, [numId, title, slug, category, summary, content, coverUrl, galleryJson, author || 'Admin', pubDate]);
+      await pool.query("SELECT setval(pg_get_serial_sequence('cms_articles', 'id'), COALESCE((SELECT MAX(id) FROM cms_articles), 1))").catch(() => {});
       backupDbToLocal();
       return res.status(201).json(mapCmsRow(result.rows[0]));
     }
+
+    // Align sequence before inserting to avoid primary key conflict
+    await pool.query("SELECT setval(pg_get_serial_sequence('cms_articles', 'id'), COALESCE((SELECT MAX(id) FROM cms_articles), 1))").catch(() => {});
 
     const insertQuery = `
       INSERT INTO cms_articles (title, slug, category, summary, content, image_url, gallery_images, author, is_published, published_at)
@@ -476,7 +494,7 @@ app.post('/api/v1/cms', async (req, res) => {
     res.status(201).json(mapCmsRow(result.rows[0]));
   } catch (err) {
     console.error('Error inserting CMS article:', err);
-    res.status(500).json({ error: 'Failed to create article' });
+    res.status(500).json({ error: 'Failed to create article', detail: err.message });
   }
 });
 
