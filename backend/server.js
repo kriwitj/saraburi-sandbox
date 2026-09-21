@@ -77,12 +77,21 @@ async function initDb() {
       }
     }
 
-    // Ensure all tables and foreign keys support BIGINT independently
+    // Ensure all tables, columns, and foreign keys support BIGINT and TEXT independently
     const alterQueries = [
       'ALTER TABLE IF EXISTS cms_articles ALTER COLUMN id TYPE BIGINT',
+      'ALTER TABLE IF EXISTS cms_articles ALTER COLUMN image_url TYPE TEXT',
+      'ALTER TABLE IF EXISTS cms_articles ALTER COLUMN title TYPE TEXT',
+      'ALTER TABLE IF EXISTS cms_articles ALTER COLUMN slug TYPE TEXT',
+      'ALTER TABLE IF EXISTS cms_articles ALTER COLUMN author TYPE TEXT',
       'ALTER TABLE IF EXISTS projects ALTER COLUMN id TYPE BIGINT',
+      'ALTER TABLE IF EXISTS projects ALTER COLUMN name TYPE TEXT',
+      'ALTER TABLE IF EXISTS projects ALTER COLUMN agency TYPE TEXT',
       'ALTER TABLE IF EXISTS activities ALTER COLUMN id TYPE BIGINT',
       'ALTER TABLE IF EXISTS activities ALTER COLUMN project_id TYPE BIGINT',
+      'ALTER TABLE IF EXISTS activities ALTER COLUMN image_url TYPE TEXT',
+      'ALTER TABLE IF EXISTS activities ALTER COLUMN title TYPE TEXT',
+      'ALTER TABLE IF EXISTS activities ALTER COLUMN location TYPE TEXT',
       'ALTER TABLE IF EXISTS dimension_metrics ALTER COLUMN id TYPE BIGINT',
       'ALTER TABLE IF EXISTS summary_metrics ALTER COLUMN id TYPE BIGINT'
     ];

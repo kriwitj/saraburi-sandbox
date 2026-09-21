@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS cms_articles (
     category VARCHAR(100) NOT NULL, -- e.g., 'News', 'Announcement', 'Activity'
     summary TEXT,
     content TEXT NOT NULL,
-    image_url VARCHAR(500),
+    image_url TEXT,
     gallery_images JSONB DEFAULT '[]', -- Array of uploaded image attachments
     author VARCHAR(100),
     is_published BOOLEAN DEFAULT TRUE,
@@ -45,7 +45,7 @@ CREATE TABLE IF NOT EXISTS activities (
     carbon_saved_co2e NUMERIC(12, 2) DEFAULT 0.00, -- Amount of carbon reduced
     budget_spent_baht NUMERIC(12, 2) DEFAULT 0.00,
     activity_date DATE NOT NULL,
-    image_url VARCHAR(500),
+    image_url TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
