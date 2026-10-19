@@ -32,19 +32,33 @@ export default function Dashboard({
   }, [allTabs]);
 
   const [selectedTabId, setSelectedTabId] = useState(() => displayTabs[0]?.id || 'tab-default');
-  const [isLoading, setIsLoading] = useState(true);
-  const [iframeKey, setIframeKey] = useState(0);
+  const [loadedTabIds, setLoadedTabIds] = useState(() => new Set([displayTabs[0]?.id || 'tab-default']));
+  const [tabLoadingState, setTabLoadingState] = useState({});
+  const [iframeRefreshKeys, setIframeRefreshKeys] = useState({});
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const iframeContainerRef = useRef(null);
+  const fullscreenWrapperRef = useRef(null);
 
   // Sync selected tab if removed or changed
   useEffect(() => {
     if (!displayTabs.some(t => t.id === selectedTabId)) {
       if (displayTabs.length > 0) {
-        setSelectedTabId(displayTabs[0].id);
+        const nextId = displayTabs[0].id;
+        setSelectedTabId(nextId);
+        setLoadedTabIds(prev => new Set([...prev, nextId]));
       }
     }
   }, [displayTabs, selectedTabId]);
+
+  // Mark selected tab as loaded so it renders and stays in DOM
+  const handleSelectTab = (tabId) => {
+    setSelectedTabId(tabId);
+    setLoadedTabIds(prev => {
+      if (prev.has(tabId)) return prev;
+      const next = new Set(prev);
+      next.add(tabId);
+      return next;
+    });
+  };
 
   // Current active tab object
   const currentTab = useMemo(() => {
@@ -59,36 +73,49 @@ export default function Dashboard({
     return { url: '', title: '', height: '', isIframeTag: false };
   }, [currentTab]);
 
-  // Reset loading whenever active tab or iframe URL changes
-  useEffect(() => {
-    setIsLoading(true);
-  }, [currentTab.id, parsedCurrentIframe.url]);
-
   // Fullscreen change listener
   useEffect(() => {
     const handleFsChange = () => {
-      setIsFullscreen(Boolean(document.fullscreenElement));
+      setIsFullscreen(Boolean(document.fullscreenElement || document.webkitFullscreenElement));
     };
     document.addEventListener('fullscreenchange', handleFsChange);
-    return () => document.removeEventListener('fullscreenchange', handleFsChange);
+    document.addEventListener('webkitfullscreenchange', handleFsChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFsChange);
+      document.removeEventListener('webkitfullscreenchange', handleFsChange);
+    };
   }, []);
 
   const toggleFullscreen = () => {
-    if (!iframeContainerRef.current) return;
-    if (!document.fullscreenElement) {
-      if (iframeContainerRef.current.requestFullscreen) {
-        iframeContainerRef.current.requestFullscreen().then(() => setIsFullscreen(true)).catch(() => {});
+    if (!fullscreenWrapperRef.current) return;
+    if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+      const el = fullscreenWrapperRef.current;
+      if (el.requestFullscreen) {
+        el.requestFullscreen().then(() => setIsFullscreen(true)).catch(() => {});
+      } else if (el.webkitRequestFullscreen) {
+        el.webkitRequestFullscreen();
+      } else if (el.msRequestFullscreen) {
+        el.msRequestFullscreen();
       }
     } else {
       if (document.exitFullscreen) {
         document.exitFullscreen().then(() => setIsFullscreen(false)).catch(() => {});
+      } else if (document.webkitExitFullscreen) {
+        document.webkitExitFullscreen();
+      } else if (document.msExitFullscreen) {
+        document.msExitFullscreen();
       }
     }
   };
 
-  const handleRefresh = () => {
-    setIsLoading(true);
-    setIframeKey(k => k + 1);
+  // Refresh ONLY a specific tab's iframe (default: active tab)
+  const handleRefresh = (tabId) => {
+    const targetId = tabId || selectedTabId;
+    setTabLoadingState(prev => ({ ...prev, [targetId]: true }));
+    setIframeRefreshKeys(prev => ({
+      ...prev,
+      [targetId]: (prev[targetId] || 0) + 1
+    }));
   };
 
   const handleGoToAdmin = () => {
@@ -354,22 +381,24 @@ export default function Dashboard({
   };
 
   // ----------------------------------------------------
-  // Render iFrame Dashboard (Power BI, NSO, etc.)
+  // Render iFrame Dashboard Tab (Power BI, NSO, etc.)
   // ----------------------------------------------------
-  const renderIframeDashboard = () => {
-    const isPowerBiSource = (parsedCurrentIframe.url || '').toLowerCase().includes('powerbi');
-    const isNsoSource = (parsedCurrentIframe.url || '').toLowerCase().includes('nso.go.th');
-    
-    const customHeight = currentTab.height || parsedCurrentIframe.height || '850px';
+  const renderIframeTab = (tab, isTabActive) => {
+    const parsed = parseIframeInput(tab.iframe || '');
+    const isPowerBiSource = (parsed.url || '').toLowerCase().includes('powerbi');
+    const isNsoSource = (parsed.url || '').toLowerCase().includes('nso.go.th');
+    const customHeight = tab.height || parsed.height || '850px';
+    const isTabLoading = tabLoadingState[tab.id] ?? true;
+    const refreshKey = iframeRefreshKeys[tab.id] || 0;
 
-    if (!parsedCurrentIframe.url) {
+    if (!parsed.url) {
       return (
-        <div className="p-12 text-center bg-white border border-dashed rounded-3xl border-slate-300 space-y-4">
+        <div className="p-12 text-center bg-white border border-dashed rounded-3xl border-slate-300 space-y-4 my-4">
           <div className="flex items-center justify-center w-14 h-14 mx-auto bg-amber-50 rounded-2xl text-amber-600">
             <AlertCircle className="w-8 h-8" />
           </div>
           <div className="space-y-1">
-            <h4 className="text-sm font-bold text-slate-800">ยังไม่ได้ใส่ลิงก์หรือโค้ด &lt;iframe&gt; สำหรับแท็บนี้</h4>
+            <h4 className="text-sm font-bold text-slate-800">ยังไม่ได้ใส่ลิงก์หรือโค้ด &lt;iframe&gt; สำหรับแท็บ "{tab.title}"</h4>
             <p className="text-xs text-slate-500 max-w-md mx-auto">
               คุณสามารถเข้าไปที่ระบบหลังบ้าน (Admin) เพื่อวางโค้ด &lt;iframe&gt; หรือ URL ของ Power BI ในแท็บนี้ได้ตลอดเวลา
             </p>
@@ -377,7 +406,7 @@ export default function Dashboard({
           {isAuthenticated && (
             <button
               onClick={handleGoToAdmin}
-              className="px-4 py-2 text-xs font-bold text-white transition bg-emerald-600 rounded-xl hover:bg-emerald-700 shadow-sm inline-flex items-center gap-1.5"
+              className="px-4 py-2 text-xs font-bold text-white transition bg-emerald-600 rounded-xl hover:bg-emerald-700 shadow-sm inline-flex items-center gap-1.5 cursor-pointer"
             >
               <Settings className="w-4 h-4" />
               <span>ไปตั้งค่า &lt;iframe&gt; ในระบบหลังบ้าน</span>
@@ -388,27 +417,26 @@ export default function Dashboard({
     }
 
     return (
-      <div className="space-y-4 animate-in fade-in duration-200">
+      <div className={isFullscreen ? "w-full h-full flex flex-col flex-1" : "space-y-4"}>
         {/* The iFrame Container */}
         <div 
-          ref={iframeContainerRef}
-          className={`relative w-full bg-slate-950 rounded-3xl border border-slate-200/90 shadow-md overflow-hidden transition-all duration-300 ${
-            isFullscreen ? 'p-0 rounded-none' : ''
+          className={`relative w-full bg-slate-950 overflow-hidden transition-all duration-300 ${
+            isFullscreen ? 'flex-1 rounded-none border-0' : 'rounded-3xl border border-slate-200/90 shadow-md'
           }`}
           style={{ 
-            height: isFullscreen ? '100vh' : customHeight,
-            minHeight: isFullscreen ? '100vh' : '650px' 
+            height: isFullscreen ? '100%' : customHeight,
+            minHeight: isFullscreen ? '100%' : '650px' 
           }}
         >
           {/* Loading Indicator */}
-          {isLoading && (
+          {isTabLoading && (
             <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-slate-900/90 backdrop-blur-xs text-white space-y-4">
               <div className="relative flex items-center justify-center w-14 h-14">
                 <div className="w-14 h-14 border-4 border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin"></div>
                 <LayoutDashboard className="absolute w-6 h-6 text-emerald-400" />
               </div>
               <div className="text-center space-y-1">
-                <p className="text-sm font-bold text-slate-100">กำลังเชื่อมต่อและโหลดแดชบอร์ด...</p>
+                <p className="text-sm font-bold text-slate-100">กำลังเชื่อมต่อและโหลดแดชบอร์ด ({tab.title})...</p>
                 <p className="text-xs text-slate-400 font-mono">กรุณารอสักครู่ ระบบกำลังเรนเดอร์ข้อมูล</p>
               </div>
             </div>
@@ -416,50 +444,54 @@ export default function Dashboard({
 
           {/* Embedded iFrame */}
           <iframe
-            key={iframeKey}
-            src={parsedCurrentIframe.url}
-            title={currentTab.title}
+            key={`${tab.id}-${refreshKey}`}
+            src={parsed.url}
+            title={tab.title}
             className="w-full h-full border-0 bg-white"
             allowFullScreen={true}
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
             loading="lazy"
-            onLoad={() => setIsLoading(false)}
+            onLoad={() => {
+              setTabLoadingState(prev => ({ ...prev, [tab.id]: false }));
+            }}
           />
         </div>
 
-        {/* Footer Notes & Metadata */}
-        <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-[11px] text-slate-500 font-mono">
-          <div className="flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-            <span>
-              แหล่งข้อมูล: {isPowerBiSource ? 'ระบบเชื่อมต่อ Microsoft Power BI Service' : isNsoSource ? 'ระบบสถิติการพัฒนาจังหวัด สำนักงานสถิติแห่งชาติ (NSO)' : 'ระบบเชื่อมต่อ Interactive Dashboard'} ผ่าน iframe sandbox
-            </span>
-          </div>
-          <div className="flex items-center gap-3">
-            <a 
-              href={parsedCurrentIframe.url} 
-              target="_blank" 
-              rel="noopener noreferrer" 
-              className="text-slate-600 hover:text-emerald-700 flex items-center gap-1 font-bold"
-            >
-              <span>เปิดลิงก์ตรงในหน้าต่างใหม่</span>
-              <ArrowUpRight className="w-3.5 h-3.5" />
-            </a>
-            {isAuthenticated && (
-              <button 
-                onClick={handleGoToAdmin} 
-                className="text-emerald-700 underline font-bold hover:text-emerald-800"
+        {/* Footer Notes & Metadata (hidden in fullscreen) */}
+        {!isFullscreen && (
+          <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-[11px] text-slate-500 font-mono">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+              <span>
+                แหล่งข้อมูล: {isPowerBiSource ? 'ระบบเชื่อมต่อ Microsoft Power BI Service' : isNsoSource ? 'ระบบสถิติการพัฒนาจังหวัด สำนักงานสถิติแห่งชาติ (NSO)' : 'ระบบเชื่อมต่อ Interactive Dashboard'} ผ่าน iframe sandbox
+              </span>
+            </div>
+            <div className="flex items-center gap-3">
+              <a 
+                href={parsed.url} 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="text-slate-600 hover:text-emerald-700 flex items-center gap-1 font-bold"
               >
-                แก้ไขแท็บนี้ในระบบหลังบ้าน
-              </button>
-            )}
+                <span>เปิดลิงก์ตรงในหน้าต่างใหม่</span>
+                <ArrowUpRight className="w-3.5 h-3.5" />
+              </a>
+              {isAuthenticated && (
+                <button 
+                  onClick={handleGoToAdmin} 
+                  className="text-emerald-700 underline font-bold hover:text-emerald-800 cursor-pointer"
+                >
+                  แก้ไขแท็บนี้ในระบบหลังบ้าน
+                </button>
+              )}
+            </div>
           </div>
-        </div>
+        )}
       </div>
     );
   };
 
-  // Determine Badge Label
+  // Determine Badge Label for Active Tab
   const isIframeTab = currentTab.type === 'iframe';
   const isPowerBiSource = isIframeTab && (parsedCurrentIframe.url || '').toLowerCase().includes('powerbi');
   const isNsoSource = isIframeTab && (parsedCurrentIframe.url || '').toLowerCase().includes('nso.go.th');
@@ -473,134 +505,278 @@ export default function Dashboard({
     : 'Interactive Dashboard Live';
 
   return (
-    <section className="w-full px-4 sm:px-6 lg:px-12 py-10 sm:py-14 mx-auto space-y-6 max-w-7xl">
-      
+    <section 
+      ref={fullscreenWrapperRef}
+      className={
+        isFullscreen 
+          ? "fixed inset-0 z-[9999] bg-slate-950 flex flex-col w-screen h-screen overflow-hidden text-slate-100" 
+          : "w-full px-4 sm:px-6 lg:px-12 py-10 sm:py-14 mx-auto space-y-6 max-w-7xl"
+      }
+    >
       {/* ========================================================
-          MULTI-TAB NAVIGATION BAR (กำหนดและเพิ่ม-ลดได้)
+          FULLSCREEN HEADER: แสดงชื่อแท็บ และสลับแท็บได้ในโหมดเต็มจอ
          ======================================================== */}
-      <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-200">
-        <div className="flex items-center gap-2 overflow-x-auto py-1 no-scrollbar max-w-full">
-          {displayTabs.map((tab) => {
-            const isActive = tab.id === selectedTabId;
-            const isTabOriginal = tab.type === 'original';
-
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setSelectedTabId(tab.id)}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold transition-all shrink-0 cursor-pointer shadow-2xs ${
-                  isActive
-                    ? 'bg-emerald-600 text-white shadow-sm ring-2 ring-emerald-600/30'
-                    : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
-                }`}
-              >
-                {isTabOriginal ? (
-                  <BarChart3 className={`w-4 h-4 ${isActive ? 'text-white' : 'text-emerald-600'}`} />
-                ) : (
-                  <LayoutDashboard className={`w-4 h-4 ${isActive ? 'text-white' : 'text-blue-600'}`} />
-                )}
-                <span>{tab.title}</span>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Quick Admin Tab Management Button */}
-        {isAuthenticated && (
-          <button
-            onClick={handleGoToAdmin}
-            className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-xl transition cursor-pointer"
-            title="เพิ่ม-ลด หรือแก้ไขแท็บแดชบอร์ดในระบบหลังบ้าน"
-          >
-            <Settings className="w-3.5 h-3.5 text-slate-600" />
-            <span>จัดการแท็บ (เพิ่ม/ลบ)</span>
-          </button>
-        )}
-      </div>
-
-      {/* ========================================================
-          TAB CONTENT HEADER
-         ======================================================== */}
-      <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-slate-200/80">
-        <div className="space-y-1 max-w-2xl">
-          <div className="flex items-center gap-2.5">
-            <span className={`p-2 text-white rounded-xl shadow-xs ${isIframeTab ? 'bg-blue-600' : 'bg-emerald-600'}`}>
-              {isIframeTab ? <LayoutDashboard className="w-5 h-5" /> : <Activity className="w-5 h-5" />}
-            </span>
-            <h2 className="text-xl sm:text-2xl font-black text-slate-800 tracking-tight">
-              {currentTab.title}
-            </h2>
+      {isFullscreen && (
+        <header className="flex items-center justify-between gap-3 px-4 py-2.5 bg-slate-900 border-b border-slate-800 shrink-0 text-white select-none z-20 shadow-md">
+          {/* Branding & Current Tab Name */}
+          <div className="flex items-center gap-3 shrink-0 min-w-0">
+            <div className="p-1.5 bg-emerald-600 rounded-lg shadow-sm">
+              <LayoutDashboard className="w-4 h-4 text-white" />
+            </div>
+            <div className="leading-tight">
+              <span className="text-[10px] uppercase tracking-wider font-mono text-emerald-400 block font-semibold">
+                Saraburi Sandbox
+              </span>
+              <span className="text-xs font-bold text-slate-100 truncate max-w-[180px] sm:max-w-[260px] block" title={currentTab.title}>
+                {currentTab.title}
+              </span>
+            </div>
           </div>
-          {currentTab.description && (
-            <p className="text-xs text-slate-500 pl-0.5 leading-relaxed">
-              {currentTab.description}
-            </p>
-          )}
-        </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Status Badge */}
-          <span className="text-[11px] font-bold px-3 py-1.5 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-700 font-mono flex items-center gap-1.5 shadow-2xs">
-            <span className="relative flex w-2 h-2">
-              <span className="absolute inline-flex w-full h-full rounded-full opacity-75 animate-ping bg-emerald-400"></span>
-              <span className="relative inline-flex w-2 h-2 rounded-full bg-emerald-500"></span>
-            </span>
-            <span>{sourceBadge}</span>
-          </span>
+          {/* Tab Switcher Pills with Full Tab Names */}
+          <div className="flex items-center gap-1.5 overflow-x-auto py-1 no-scrollbar max-w-full">
+            {displayTabs.map((tab) => {
+              const isActive = tab.id === selectedTabId;
+              const isOriginal = tab.type === 'original';
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => handleSelectTab(tab.id)}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
+                    isActive
+                      ? 'bg-emerald-600 text-white shadow-sm ring-2 ring-emerald-400/50'
+                      : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700'
+                  }`}
+                  title={tab.title}
+                >
+                  {isOriginal ? (
+                    <BarChart3 className={`w-3.5 h-3.5 ${isActive ? 'text-white' : 'text-emerald-400'}`} />
+                  ) : (
+                    <LayoutDashboard className={`w-3.5 h-3.5 ${isActive ? 'text-white' : 'text-blue-400'}`} />
+                  )}
+                  <span className="truncate max-w-[140px] sm:max-w-[200px]">{tab.title}</span>
+                </button>
+              );
+            })}
+          </div>
 
-          {/* Controls (for iframe tabs) */}
-          {isIframeTab && parsedCurrentIframe.url && (
-            <>
-              {/* Reload iFrame */}
-              <button
-                onClick={handleRefresh}
-                className="p-2 text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 hover:text-slate-900 rounded-xl transition shadow-2xs cursor-pointer"
-                title="รีเฟรชข้อมูลแดชบอร์ด"
-              >
-                <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin text-emerald-600' : ''}`} />
-              </button>
+          {/* Fullscreen Controls */}
+          <div className="flex items-center gap-2 shrink-0">
+            {isIframeTab && parsedCurrentIframe.url && (
+              <>
+                <button
+                  onClick={() => handleRefresh(selectedTabId)}
+                  className="p-1.5 text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-700 transition cursor-pointer"
+                  title="รีเฟรชแท็บนี้"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${tabLoadingState[selectedTabId] ? 'animate-spin text-emerald-400' : ''}`} />
+                </button>
+                <a
+                  href={parsedCurrentIframe.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-1.5 text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-700 transition cursor-pointer"
+                  title="เปิดในแท็บใหม่"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+              </>
+            )}
 
-              {/* Open in new window */}
-              <a
-                href={parsedCurrentIframe.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="p-2 text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 hover:text-slate-900 rounded-xl transition shadow-2xs cursor-pointer"
-                title="เปิดแดชบอร์ดในแท็บใหม่"
-              >
-                <ExternalLink className="w-4 h-4" />
-              </a>
+            {/* Exit Fullscreen Button */}
+            <button
+              onClick={toggleFullscreen}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-200 bg-slate-800 hover:bg-rose-600 hover:text-white border border-slate-700 rounded-lg transition cursor-pointer"
+              title="ออกจากโหมดเต็มจอ (ESC)"
+            >
+              <Minimize2 className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">ออกจากเต็มจอ</span>
+            </button>
+          </div>
+        </header>
+      )}
 
-              {/* Fullscreen Toggle */}
-              <button
-                onClick={toggleFullscreen}
-                className="px-3 py-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 rounded-xl flex items-center gap-1.5 transition shadow-2xs cursor-pointer"
-                title={isFullscreen ? 'ออกจากโหมดเต็มจอ' : 'แสดงผลเต็มหน้าจอ'}
-              >
-                {isFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
-                <span>{isFullscreen ? 'ย่อหน้าจอ' : 'เต็มจอ'}</span>
-              </button>
-            </>
-          )}
+      {/* ========================================================
+          MULTI-TAB NAVIGATION BAR (เฉพาะตอนไม่ได้เปิดเต็มจอ)
+         ======================================================== */}
+      {!isFullscreen && (
+        <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-200">
+          <div className="flex items-center gap-2 overflow-x-auto py-1 no-scrollbar max-w-full">
+            {displayTabs.map((tab) => {
+              const isActive = tab.id === selectedTabId;
+              const isTabOriginal = tab.type === 'original';
 
-          {/* Quick Admin Tab Edit */}
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => handleSelectTab(tab.id)}
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold transition-all shrink-0 cursor-pointer shadow-2xs ${
+                    isActive
+                      ? 'bg-emerald-600 text-white shadow-sm ring-2 ring-emerald-600/30'
+                      : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
+                  }`}
+                >
+                  {isTabOriginal ? (
+                    <BarChart3 className={`w-4 h-4 ${isActive ? 'text-white' : 'text-emerald-600'}`} />
+                  ) : (
+                    <LayoutDashboard className={`w-4 h-4 ${isActive ? 'text-white' : 'text-blue-600'}`} />
+                  )}
+                  <span>{tab.title}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Quick Admin Tab Management Button */}
           {isAuthenticated && (
             <button
               onClick={handleGoToAdmin}
-              className="px-3 py-1.5 text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200 hover:bg-blue-100 rounded-xl flex items-center gap-1.5 transition shadow-2xs cursor-pointer"
-              title="แก้ไขแท็บนี้ในระบบหลังบ้าน"
+              className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-xl transition cursor-pointer"
+              title="เพิ่ม-ลด หรือแก้ไขแท็บแดชบอร์ดในระบบหลังบ้าน"
             >
-              <Settings className="w-3.5 h-3.5 text-blue-600" />
-              <span>แก้ไขแท็บ</span>
+              <Settings className="w-3.5 h-3.5 text-slate-600" />
+              <span>จัดการแท็บ (เพิ่ม/ลบ)</span>
             </button>
           )}
         </div>
-      </div>
+      )}
 
       {/* ========================================================
-          TAB CONTENT BODY (Original vs iFrame)
+          TAB CONTENT HEADER (เฉพาะตอนไม่ได้เปิดเต็มจอ)
+         ======================================================== */}
+      {!isFullscreen && (
+        <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-slate-200/80">
+          <div className="space-y-1 max-w-2xl">
+            <div className="flex items-center gap-2.5">
+              <span className={`p-2 text-white rounded-xl shadow-xs ${isIframeTab ? 'bg-blue-600' : 'bg-emerald-600'}`}>
+                {isIframeTab ? <LayoutDashboard className="w-5 h-5" /> : <Activity className="w-5 h-5" />}
+              </span>
+              <h2 className="text-xl sm:text-2xl font-black text-slate-800 tracking-tight">
+                {currentTab.title}
+              </h2>
+            </div>
+            {currentTab.description && (
+              <p className="text-xs text-slate-500 pl-0.5 leading-relaxed">
+                {currentTab.description}
+              </p>
+            )}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Status Badge */}
+            <span className="text-[11px] font-bold px-3 py-1.5 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-700 font-mono flex items-center gap-1.5 shadow-2xs">
+              <span className="relative flex w-2 h-2">
+                <span className="absolute inline-flex w-full h-full rounded-full opacity-75 animate-ping bg-emerald-400"></span>
+                <span className="relative inline-flex w-2 h-2 rounded-full bg-emerald-500"></span>
+              </span>
+              <span>{sourceBadge}</span>
+            </span>
+
+            {/* Controls for iframe tabs */}
+            {isIframeTab && parsedCurrentIframe.url && (
+              <>
+                {/* Reload iFrame for this tab */}
+                <button
+                  onClick={() => handleRefresh(selectedTabId)}
+                  className="p-2 text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 hover:text-slate-900 rounded-xl transition shadow-2xs cursor-pointer"
+                  title="รีเฟรชข้อมูลแดชบอร์ดแท็บนี้"
+                >
+                  <RefreshCw className={`w-4 h-4 ${tabLoadingState[selectedTabId] ? 'animate-spin text-emerald-600' : ''}`} />
+                </button>
+
+                {/* Open in new window */}
+                <a
+                  href={parsedCurrentIframe.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-2 text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 hover:text-slate-900 rounded-xl transition shadow-2xs cursor-pointer"
+                  title="เปิดแดชบอร์ดในแท็บใหม่"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                </a>
+              </>
+            )}
+
+            {/* Fullscreen Toggle Button (รองรับทุกแท็บ) */}
+            <button
+              onClick={toggleFullscreen}
+              className="px-3.5 py-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 rounded-xl flex items-center gap-1.5 transition shadow-2xs cursor-pointer"
+              title={isFullscreen ? 'ออกจากโหมดเต็มจอ' : 'แสดงผลเต็มหน้าจอ'}
+            >
+              {isFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+              <span>{isFullscreen ? 'ย่อหน้าจอ' : 'เต็มจอ'}</span>
+            </button>
+
+            {/* Quick Admin Tab Edit */}
+            {isAuthenticated && (
+              <button
+                onClick={handleGoToAdmin}
+                className="px-3 py-1.5 text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200 hover:bg-blue-100 rounded-xl flex items-center gap-1.5 transition shadow-2xs cursor-pointer"
+                title="แก้ไขแท็บนี้ในระบบหลังบ้าน"
+              >
+                <Settings className="w-3.5 h-3.5 text-blue-600" />
+                <span>แก้ไขแท็บ</span>
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================
+          TAB CONTENT BODY (Keep-alive ทุกแท็บที่เคยเปิดแล้ว ไม่ต้องโหลดใหม่)
          ========================================================= */}
-      {isIframeTab ? renderIframeDashboard() : renderOriginalDashboard()}
+      <div className={isFullscreen ? "flex-1 w-full h-full relative overflow-hidden flex flex-col" : "w-full"}>
+        {displayTabs.map((tab) => {
+          const isTabActive = tab.id === selectedTabId;
+          const isLoaded = loadedTabIds.has(tab.id);
+
+          // Lazy load: ยังไม่ mount จนกว่าผู้ใช้จะเปิดแท็บนี้ครั้งแรก
+          if (!isLoaded && !isTabActive) {
+            return null;
+          }
+
+          const isTabOriginal = tab.type === 'original';
+
+          return (
+            <div
+              key={tab.id}
+              className={
+                isTabActive
+                  ? isFullscreen
+                    ? "flex-1 w-full h-full relative flex flex-col overflow-hidden"
+                    : "w-full animate-in fade-in duration-150"
+                  : "w-0 h-0 overflow-hidden"
+              }
+              style={
+                !isTabActive
+                  ? {
+                      position: 'absolute',
+                      top: '-99999px',
+                      left: '-99999px',
+                      width: '100%',
+                      height: isFullscreen ? '100%' : (tab.height || '850px'),
+                      opacity: 0,
+                      pointerEvents: 'none',
+                      visibility: 'hidden',
+                      zIndex: -50,
+                    }
+                  : isFullscreen
+                  ? { height: '100%', width: '100%', display: 'flex', flexDirection: 'column', flex: 1 }
+                  : {}
+              }
+              aria-hidden={!isTabActive}
+            >
+              {isTabOriginal ? (
+                <div className={isFullscreen ? "flex-1 overflow-y-auto p-4 sm:p-8 bg-slate-50 text-slate-800" : ""}>
+                  {renderOriginalDashboard()}
+                </div>
+              ) : (
+                renderIframeTab(tab, isTabActive)
+              )}
+            </div>
+          );
+        })}
+      </div>
 
     </section>
   );
