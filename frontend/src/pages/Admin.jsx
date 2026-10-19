@@ -5,10 +5,29 @@ import {
   Pencil, Trash2, TrendingUp, Sparkles, Images, CheckCircle2, Save,
   ArrowUpRight, BarChart3, Check, RefreshCw, Loader2, Search,
   ArrowUpDown, Filter, X, LayoutDashboard, ExternalLink, Code,
-  Layers, MoveUp, MoveDown, PlusCircle
+  Layers, MoveUp, MoveDown, PlusCircle, Palette, Upload, Image as ImageIcon,
+  PieChart as PieIcon, Activity, Leaf, Zap, FileSpreadsheet
 } from 'lucide-react';
 import NewsFormModal from '../components/NewsFormModal';
-import { parseIframeInput, DEMO_POWERBI_IFRAME, normalizeDashboardTabs } from '../utils/powerBiUtils';
+import { 
+  parseIframeInput, DEMO_POWERBI_IFRAME, normalizeDashboardTabs,
+  TAB_COLOR_PRESETS, AVAILABLE_TAB_ICONS 
+} from '../utils/powerBiUtils';
+
+const ADMIN_TAB_ICON_MAP = {
+  BarChart3,
+  LayoutDashboard,
+  PieChart: PieIcon,
+  Activity,
+  Leaf,
+  Globe,
+  Zap,
+  FileSpreadsheet,
+  Database,
+  TrendingUp,
+  Layers,
+  MapPin
+};
 
 export default function Admin({
   isAuthenticated,
@@ -185,10 +204,29 @@ export default function Admin({
       type: 'iframe', // 'iframe' or 'original'
       iframe: '',
       height: '850px',
+      color: '#3B82F6',
+      icon_name: 'LayoutDashboard',
+      logo_url: '',
       enabled: true
     };
     setDashboardTabs(prev => [...prev, newTab]);
     setActiveEditingTabId(newId);
+  };
+
+  const handleLogoUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      alert('ไฟล์ภาพมีขนาดใหญ่เกิน 2MB กรุณาเลือกรูปภาพขนาดไม่เกิน 2MB');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      handleUpdateActiveTabField('logo_url', event.target.result);
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleDeleteTab = (idToDelete) => {
@@ -1340,12 +1378,23 @@ export default function Admin({
                           >
                             <div className="flex items-start justify-between gap-2">
                               <div className="space-y-1 flex-1 min-w-0">
-                                <div className="flex items-center gap-1.5">
-                                  {isOriginal ? (
-                                    <BarChart3 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                                <div className="flex items-center gap-2">
+                                  {tab.logo_url ? (
+                                    <img 
+                                      src={tab.logo_url} 
+                                      alt="" 
+                                      className="w-4 h-4 object-contain rounded shrink-0 bg-white p-0.5 border border-slate-200" 
+                                    />
                                   ) : (
-                                    <LayoutDashboard className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                                    (() => {
+                                      const IconComp = ADMIN_TAB_ICON_MAP[tab.icon_name] || (isOriginal ? BarChart3 : LayoutDashboard);
+                                      return <IconComp className="w-3.5 h-3.5 shrink-0" style={{ color: tab.color || (isOriginal ? '#10B981' : '#3B82F6') }} />;
+                                    })()
                                   )}
+                                  <span 
+                                    className="w-2 h-2 rounded-full shrink-0 shadow-2xs" 
+                                    style={{ backgroundColor: tab.color || (isOriginal ? '#10B981' : '#3B82F6') }} 
+                                  />
                                   <strong className="text-xs font-bold text-slate-800 truncate block">
                                     {tab.title || '(ไม่มีชื่อแท็บ)'}
                                   </strong>
@@ -1504,7 +1553,191 @@ export default function Admin({
                       </div>
                     </div>
 
-                    {/* Field 4: If type is iframe, show Embed Code Input & Height & Preview */}
+                    {/* Field 4: Tab Theme Color (ปรับสีแท็บได้) */}
+                    <div className="p-4 bg-white border border-slate-200 rounded-2xl space-y-3">
+                      <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                        <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                          <Palette className="w-4 h-4 text-emerald-600" />
+                          <span>สีประจำแท็บ (Tab Theme Color)</span>
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[11px] font-mono font-bold text-slate-600">
+                            {currentTab.color || (currentTab.type === 'original' ? '#10B981' : '#3B82F6')}
+                          </span>
+                          <div 
+                            className="w-5 h-5 rounded-full border border-slate-300 shadow-2xs" 
+                            style={{ backgroundColor: currentTab.color || (currentTab.type === 'original' ? '#10B981' : '#3B82F6') }} 
+                          />
+                        </div>
+                      </div>
+
+                      {/* Color Presets */}
+                      <div className="space-y-1.5">
+                        <span className="text-[11px] text-slate-500 font-medium block">ชุดสีแนะนำตามมาตรฐาน:</span>
+                        <div className="flex flex-wrap items-center gap-2">
+                          {TAB_COLOR_PRESETS.map((c) => {
+                            const activeCol = (currentTab.color || (currentTab.type === 'original' ? '#10B981' : '#3B82F6')).toLowerCase();
+                            const isChosen = activeCol === c.hex.toLowerCase();
+                            return (
+                              <button
+                                key={c.hex}
+                                type="button"
+                                onClick={() => handleUpdateActiveTabField('color', c.hex)}
+                                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer border ${
+                                  isChosen
+                                    ? 'border-slate-800 ring-2 ring-slate-800/30 shadow-xs text-slate-900 bg-slate-100'
+                                    : 'border-slate-200 hover:border-slate-300 text-slate-600 bg-white'
+                                }`}
+                                title={c.label}
+                              >
+                                <span className="w-3.5 h-3.5 rounded-full shrink-0 shadow-2xs" style={{ backgroundColor: c.hex }} />
+                                <span className="text-[11px]">{c.name}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Custom Color Input */}
+                      <div className="flex items-center gap-3 pt-2 border-t border-slate-100">
+                        <span className="text-[11px] text-slate-500 font-medium">หรือกำหนดรหัสสี Hex เอง:</span>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="color"
+                            value={currentTab.color || (currentTab.type === 'original' ? '#10B981' : '#3B82F6')}
+                            onChange={(e) => handleUpdateActiveTabField('color', e.target.value)}
+                            className="w-8 h-8 rounded-lg cursor-pointer border-0 p-0 bg-transparent"
+                            title="คลิกเพื่อเลือกสี"
+                          />
+                          <input
+                            type="text"
+                            value={currentTab.color || (currentTab.type === 'original' ? '#10B981' : '#3B82F6')}
+                            onChange={(e) => handleUpdateActiveTabField('color', e.target.value)}
+                            placeholder="#10B981"
+                            className="w-24 p-1.5 text-xs font-mono font-bold uppercase border rounded-lg border-slate-300 focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-white"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Field 5: Tab Icon & Logo Upload (ไอคอน + โลโก้ upload ได้) */}
+                    <div className="p-4 bg-white border border-slate-200 rounded-2xl space-y-4">
+                      <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                        <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                          <ImageIcon className="w-4 h-4 text-blue-600" />
+                          <span>ไอคอนและโลโก้ประจำแท็บ (Tab Icon & Logo)</span>
+                        </label>
+                        {currentTab.logo_url && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 bg-blue-50 text-blue-700 rounded-md border border-blue-200">
+                            กำลังใช้รูปภาพโลโก้
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Option A: Upload Custom Logo */}
+                      <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
+                        <div className="flex items-center justify-between">
+                          <strong className="text-xs text-slate-700 flex items-center gap-1.5">
+                            <Upload className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>1. อัปโหลดโลโก้รูปภาพ (Custom Logo)</span>
+                          </strong>
+                          {currentTab.logo_url && (
+                            <button
+                              type="button"
+                              onClick={() => handleUpdateActiveTabField('logo_url', '')}
+                              className="text-[11px] font-bold text-red-600 hover:text-red-700 underline cursor-pointer"
+                            >
+                              ลบโลโก้ (สลับไปใช้ไอคอน)
+                            </button>
+                          )}
+                        </div>
+
+                        {currentTab.logo_url ? (
+                          <div className="flex items-center gap-3 p-2 bg-white rounded-xl border border-slate-200">
+                            <img
+                              src={currentTab.logo_url}
+                              alt="Tab Logo Preview"
+                              className="w-12 h-12 object-contain rounded-lg p-1 border border-slate-200 bg-slate-50"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <span className="text-xs font-bold text-slate-800 block">อัปโหลดโลโก้แล้ว</span>
+                              <span className="text-[10.5px] text-slate-400 font-mono truncate block">
+                                โลโก้นี้จะแสดงบนแท็บและแถบหัวข้อรายงาน
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleUpdateActiveTabField('logo_url', '')}
+                              className="px-2.5 py-1 text-xs text-red-600 hover:bg-red-50 border border-red-200 rounded-lg transition cursor-pointer"
+                            >
+                              ลบโลโก้
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                              <label className="flex items-center gap-2 px-3 py-2 bg-white hover:bg-slate-100 border border-slate-300 rounded-xl text-xs font-bold text-slate-700 cursor-pointer transition shadow-2xs">
+                                <Upload className="w-3.5 h-3.5 text-slate-600" />
+                                <span>คลิกเพื่อเลือกไฟล์รูปภาพจากเครื่อง (PNG, JPG, SVG, WebP)</span>
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  onChange={handleLogoUpload}
+                                  className="sr-only"
+                                />
+                              </label>
+                            </div>
+                            <div className="flex items-center gap-2 text-xs">
+                              <span className="text-[10px] text-slate-400">หรือระบุ URL รูปภาพ:</span>
+                              <input
+                                type="url"
+                                value={currentTab.logo_url || ''}
+                                onChange={(e) => handleUpdateActiveTabField('logo_url', e.target.value)}
+                                placeholder="https://example.com/logo.png"
+                                className="flex-1 p-1.5 text-xs border rounded-lg border-slate-300 bg-white"
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Option B: Choose System Icon */}
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <strong className="text-xs text-slate-700">2. หรือเลือกไอคอนมาตรฐาน (Lucide Icon)</strong>
+                          <span className="text-[10px] text-slate-400">จะแสดงเมื่อไม่มีการอัปโหลดโลโก้</span>
+                        </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-2">
+                          {AVAILABLE_TAB_ICONS.map((item) => {
+                            const IconComponent = ADMIN_TAB_ICON_MAP[item.name] || LayoutDashboard;
+                            const isIconSelected = (currentTab.icon_name || (currentTab.type === 'original' ? 'BarChart3' : 'LayoutDashboard')) === item.name && !currentTab.logo_url;
+                            return (
+                              <button
+                                key={item.name}
+                                type="button"
+                                onClick={() => {
+                                  handleUpdateActiveTabField('icon_name', item.name);
+                                  handleUpdateActiveTabField('logo_url', '');
+                                }}
+                                className={`p-2 rounded-xl border flex flex-col items-center justify-center gap-1 text-center transition cursor-pointer ${
+                                  isIconSelected
+                                    ? 'bg-slate-900 border-slate-900 text-white shadow-xs'
+                                    : 'bg-white border-slate-200 hover:border-slate-300 text-slate-700 hover:bg-slate-50'
+                                }`}
+                              >
+                                <IconComponent 
+                                  className="w-4 h-4" 
+                                  style={{ color: isIconSelected ? '#FFFFFF' : (currentTab.color || '#10B981') }} 
+                                />
+                                <span className="text-[10px] truncate max-w-full font-medium">{item.name}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Field 6: If type is iframe, show Embed Code Input & Height & Preview */}
                     {currentTab.type === 'iframe' && (
                       <div className="space-y-4 pt-2 border-t border-slate-200">
                         {/* Textarea for iframe */}

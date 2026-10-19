@@ -4,6 +4,32 @@
 
 export const DEMO_POWERBI_IFRAME = `<iframe title="Decarbonization Dashboard" width="100%" height="800" src="https://playground.powerbi.com/sampleReportEmbed" frameborder="0" allowFullScreen="true"></iframe>`;
 
+export const TAB_COLOR_PRESETS = [
+  { name: 'Emerald', hex: '#10B981', label: 'เขียวมรกต' },
+  { name: 'Blue', hex: '#3B82F6', label: 'น้ำเงิน' },
+  { name: 'Indigo', hex: '#6366F1', label: 'คราม' },
+  { name: 'Purple', hex: '#8B5CF6', label: 'ม่วง' },
+  { name: 'Amber', hex: '#F59E0B', label: 'ส้มอำพัน' },
+  { name: 'Rose', hex: '#EF4444', label: 'แดงกุหลาบ' },
+  { name: 'Cyan', hex: '#06B6D4', label: 'ฟ้าเทอร์ควอยซ์' },
+  { name: 'Slate', hex: '#475569', label: 'เทากราไฟต์' },
+];
+
+export const AVAILABLE_TAB_ICONS = [
+  { name: 'BarChart3', label: 'กราฟแท่ง (Bar)' },
+  { name: 'LayoutDashboard', label: 'แดชบอร์ด (Dashboard)' },
+  { name: 'PieChart', label: 'กราฟวงกลม (Pie)' },
+  { name: 'Activity', label: 'กิจกรรม / สด (Activity)' },
+  { name: 'Leaf', label: 'สิ่งแวดล้อม (Leaf)' },
+  { name: 'Globe', label: 'สถิติ / สากล (Globe)' },
+  { name: 'Zap', label: 'พลังงาน (Zap)' },
+  { name: 'FileSpreadsheet', label: 'ตารางข้อมูล (Sheet)' },
+  { name: 'Database', label: 'ฐานข้อมูล (Database)' },
+  { name: 'TrendingUp', label: 'แนวโน้ม (Trend)' },
+  { name: 'Layers', label: 'มิติข้อมูล (Layers)' },
+  { name: 'MapPin', label: 'แผนที่ / พื้นที่ (Map)' }
+];
+
 export const DEFAULT_DASHBOARD_TABS = [
   {
     id: 'tab-carbon-overview',
@@ -12,6 +38,9 @@ export const DEFAULT_DASHBOARD_TABS = [
     type: 'original', // 'original' = built-in dashboard charts, 'iframe' = Power BI or external embed
     iframe: '',
     height: '850px',
+    color: '#10B981',
+    icon_name: 'BarChart3',
+    logo_url: '',
     enabled: true
   },
   {
@@ -21,6 +50,9 @@ export const DEFAULT_DASHBOARD_TABS = [
     type: 'iframe',
     iframe: '',
     height: '850px',
+    color: '#3B82F6',
+    icon_name: 'LayoutDashboard',
+    logo_url: '',
     enabled: true
   }
 ];
@@ -43,6 +75,9 @@ export function normalizeDashboardTabs(rawTabs, summaryData = {}) {
         type: 'iframe',
         iframe: summaryData.powerbi_iframe,
         height: summaryData.powerbi_height || '850px',
+        color: '#3B82F6',
+        icon_name: 'LayoutDashboard',
+        logo_url: '',
         enabled: summaryData.powerbi_dashboard_enabled !== false
       },
       {
@@ -52,6 +87,9 @@ export function normalizeDashboardTabs(rawTabs, summaryData = {}) {
         type: 'original',
         iframe: '',
         height: '850px',
+        color: '#10B981',
+        icon_name: 'BarChart3',
+        logo_url: '',
         enabled: true
       }
     ];
@@ -66,6 +104,9 @@ export function normalizeDashboardTabs(rawTabs, summaryData = {}) {
     type: tab.type || (tab.iframe ? 'iframe' : 'original'),
     iframe: tab.iframe || '',
     height: tab.height || '850px',
+    color: tab.color || (tab.type === 'original' ? '#10B981' : '#3B82F6'),
+    icon_name: tab.icon_name || (tab.type === 'original' ? 'BarChart3' : 'LayoutDashboard'),
+    logo_url: tab.logo_url || '',
     enabled: tab.enabled !== false
   }));
 }

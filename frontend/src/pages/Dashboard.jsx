@@ -6,11 +6,47 @@ import {
 import { 
   MapPin, Activity, Globe, Maximize2, Minimize2, RefreshCw, 
   ExternalLink, CheckCircle2, Sparkles, AlertCircle, 
-  LayoutDashboard, Settings, Layers, PlusCircle, ArrowUpRight, BarChart3
+  LayoutDashboard, Settings, Layers, PlusCircle, ArrowUpRight, BarChart3,
+  PieChart as PieIcon, Leaf, Zap, FileSpreadsheet, Database, TrendingUp
 } from 'lucide-react';
 import { parseIframeInput, normalizeDashboardTabs } from '../utils/powerBiUtils';
 
 const DONUT_COLORS = ['#10B981', '#3B82F6', '#8B5CF6', '#F59E0B', '#EF4444', '#06B6D4'];
+
+const DASHBOARD_TAB_ICONS = {
+  BarChart3,
+  LayoutDashboard,
+  PieChart: PieIcon,
+  Activity,
+  Leaf,
+  Globe,
+  Zap,
+  FileSpreadsheet,
+  Database,
+  TrendingUp,
+  Layers,
+  MapPin
+};
+
+const renderDashboardTabIcon = (tab, isActive, isFullscreenMode = false) => {
+  const tabColor = tab.color || (tab.type === 'original' ? '#10B981' : '#3B82F6');
+  if (tab.logo_url) {
+    return (
+      <img
+        src={tab.logo_url}
+        alt=""
+        className="w-4 h-4 object-contain rounded shrink-0 bg-white p-0.5 shadow-2xs border border-white/20"
+      />
+    );
+  }
+  const IconComponent = DASHBOARD_TAB_ICONS[tab.icon_name] || (tab.type === 'original' ? BarChart3 : LayoutDashboard);
+  return (
+    <IconComponent 
+      className="w-3.5 h-3.5 shrink-0 transition-colors" 
+      style={{ color: isActive ? '#FFFFFF' : tabColor }} 
+    />
+  );
+};
 
 export default function Dashboard({
   summaryData = {},
@@ -517,44 +553,61 @@ export default function Dashboard({
           FULLSCREEN HEADER: แสดงชื่อแท็บ และสลับแท็บได้ในโหมดเต็มจอ
          ======================================================== */}
       {isFullscreen && (
-        <header className="flex items-center justify-between gap-3 px-4 py-2.5 bg-slate-900 border-b border-slate-800 shrink-0 text-white select-none z-20 shadow-md">
+        <header className="flex flex-wrap items-center justify-between gap-3 px-4 py-2 bg-slate-900 border-b border-slate-800 shrink-0 text-white select-none z-20 shadow-md">
           {/* Branding & Current Tab Name */}
-          <div className="flex items-center gap-3 shrink-0 min-w-0">
-            <div className="p-1.5 bg-emerald-600 rounded-lg shadow-sm">
-              <LayoutDashboard className="w-4 h-4 text-white" />
+          <div className="flex items-center gap-2.5 shrink-0 min-w-0">
+            <div 
+              className="p-1.5 rounded-lg shadow-sm flex items-center justify-center shrink-0"
+              style={{ backgroundColor: currentTab.color || '#10B981' }}
+            >
+              {currentTab.logo_url ? (
+                <img src={currentTab.logo_url} alt="" className="w-4 h-4 object-contain bg-white rounded p-0.5" />
+              ) : (
+                (() => {
+                  const IconComponent = DASHBOARD_TAB_ICONS[currentTab.icon_name] || LayoutDashboard;
+                  return <IconComponent className="w-4 h-4 text-white" />;
+                })()
+              )}
             </div>
             <div className="leading-tight">
               <span className="text-[10px] uppercase tracking-wider font-mono text-emerald-400 block font-semibold">
                 Saraburi Sandbox
               </span>
-              <span className="text-xs font-bold text-slate-100 truncate max-w-[180px] sm:max-w-[260px] block" title={currentTab.title}>
+              <span className="text-xs font-bold text-slate-100 block" title={currentTab.title}>
                 {currentTab.title}
               </span>
             </div>
           </div>
 
-          {/* Tab Switcher Pills with Full Tab Names */}
-          <div className="flex items-center gap-1.5 overflow-x-auto py-1 no-scrollbar max-w-full">
+          {/* Tab Switcher Pills with Full Tab Names (เห็นครบทุก tab ไม่ต้อง scroll) */}
+          <div className="flex flex-wrap items-center gap-1.5 flex-1 justify-center sm:justify-start">
             {displayTabs.map((tab) => {
               const isActive = tab.id === selectedTabId;
               const isOriginal = tab.type === 'original';
+              const tabColor = tab.color || (isOriginal ? '#10B981' : '#3B82F6');
               return (
                 <button
                   key={tab.id}
                   onClick={() => handleSelectTab(tab.id)}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
+                  style={
                     isActive
-                      ? 'bg-emerald-600 text-white shadow-sm ring-2 ring-emerald-400/50'
+                      ? {
+                          backgroundColor: tabColor,
+                          borderColor: tabColor,
+                          color: '#FFFFFF',
+                          boxShadow: `0 2px 10px 0 ${tabColor}60`
+                        }
+                      : {}
+                  }
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    isActive
+                      ? 'text-white shadow-sm ring-2 ring-white/30'
                       : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700'
                   }`}
                   title={tab.title}
                 >
-                  {isOriginal ? (
-                    <BarChart3 className={`w-3.5 h-3.5 ${isActive ? 'text-white' : 'text-emerald-400'}`} />
-                  ) : (
-                    <LayoutDashboard className={`w-3.5 h-3.5 ${isActive ? 'text-white' : 'text-blue-400'}`} />
-                  )}
-                  <span className="truncate max-w-[140px] sm:max-w-[200px]">{tab.title}</span>
+                  {renderDashboardTabIcon(tab, isActive, true)}
+                  <span>{tab.title}</span>
                 </button>
               );
             })}
@@ -601,26 +654,35 @@ export default function Dashboard({
          ======================================================== */}
       {!isFullscreen && (
         <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-200">
-          <div className="flex items-center gap-2 overflow-x-auto py-1 no-scrollbar max-w-full">
+          <div className="flex flex-wrap items-center gap-2 flex-grow">
             {displayTabs.map((tab) => {
               const isActive = tab.id === selectedTabId;
               const isTabOriginal = tab.type === 'original';
+              const tabColor = tab.color || (isTabOriginal ? '#10B981' : '#3B82F6');
 
               return (
                 <button
                   key={tab.id}
                   onClick={() => handleSelectTab(tab.id)}
-                  className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold transition-all shrink-0 cursor-pointer shadow-2xs ${
+                  style={
                     isActive
-                      ? 'bg-emerald-600 text-white shadow-sm ring-2 ring-emerald-600/30'
-                      : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
+                      ? {
+                          backgroundColor: tabColor,
+                          borderColor: tabColor,
+                          color: '#FFFFFF',
+                          boxShadow: `0 4px 14px 0 ${tabColor}40`
+                        }
+                      : {
+                          borderColor: '#E2E8F0'
+                        }
+                  }
+                  className={`flex items-center gap-2 px-4 py-2 rounded-2xl text-xs font-bold transition-all cursor-pointer shadow-2xs ${
+                    isActive
+                      ? 'text-white'
+                      : 'bg-white hover:bg-slate-50 text-slate-700 border'
                   }`}
                 >
-                  {isTabOriginal ? (
-                    <BarChart3 className={`w-4 h-4 ${isActive ? 'text-white' : 'text-emerald-600'}`} />
-                  ) : (
-                    <LayoutDashboard className={`w-4 h-4 ${isActive ? 'text-white' : 'text-blue-600'}`} />
-                  )}
+                  {renderDashboardTabIcon(tab, isActive, false)}
                   <span>{tab.title}</span>
                 </button>
               );
@@ -631,7 +693,7 @@ export default function Dashboard({
           {isAuthenticated && (
             <button
               onClick={handleGoToAdmin}
-              className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-xl transition cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-xl transition cursor-pointer shrink-0"
               title="เพิ่ม-ลด หรือแก้ไขแท็บแดชบอร์ดในระบบหลังบ้าน"
             >
               <Settings className="w-3.5 h-3.5 text-slate-600" />
@@ -648,8 +710,18 @@ export default function Dashboard({
         <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-slate-200/80">
           <div className="space-y-1 max-w-2xl">
             <div className="flex items-center gap-2.5">
-              <span className={`p-2 text-white rounded-xl shadow-xs ${isIframeTab ? 'bg-blue-600' : 'bg-emerald-600'}`}>
-                {isIframeTab ? <LayoutDashboard className="w-5 h-5" /> : <Activity className="w-5 h-5" />}
+              <span 
+                className="p-2 text-white rounded-xl shadow-xs flex items-center justify-center shrink-0"
+                style={{ backgroundColor: currentTab.color || (isIframeTab ? '#2563EB' : '#059669') }}
+              >
+                {currentTab.logo_url ? (
+                  <img src={currentTab.logo_url} alt="" className="w-5 h-5 object-contain bg-white rounded p-0.5" />
+                ) : (
+                  (() => {
+                    const IconComponent = DASHBOARD_TAB_ICONS[currentTab.icon_name] || (isIframeTab ? LayoutDashboard : Activity);
+                    return <IconComponent className="w-5 h-5 text-white" />;
+                  })()
+                )}
               </span>
               <h2 className="text-xl sm:text-2xl font-black text-slate-800 tracking-tight">
                 {currentTab.title}
