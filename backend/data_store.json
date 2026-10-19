@@ -420,7 +420,27 @@
     "wef_initiative_member": true,
     "powerbi_iframe": "",
     "powerbi_dashboard_enabled": true,
-    "powerbi_title": "ระบบแดชบอร์ดติดตามคาร์บอน (Decarbonization Dashboard)",
-    "powerbi_height": "850px"
+    "powerbi_title": "ระบบแดชบอร์ดติดตามข้อมูล (Decarbonization Dashboard)",
+    "powerbi_height": "850px",
+    "dashboard_tabs": [
+      {
+        "id": "tab-carbon-overview",
+        "title": "ภาพรวมการลดก๊าซเรือนกระจก",
+        "description": "ระบบติดตามคาร์บอนและสถิติการลดก๊าซเรือนกระจกรายมิติและพื้นที่จังหวัดสระบุรี (Saraburi Sandbox)",
+        "type": "original",
+        "iframe": "",
+        "height": "850px",
+        "enabled": true
+      },
+      {
+        "id": "tab-powerbi-report",
+        "title": "Power BI แดชบอร์ดวิเคราะห์",
+        "description": "รายงานวิเคราะห์เชิงลึกเชื่อมโยงสดผ่าน Microsoft Power BI Interactive Dashboard",
+        "type": "iframe",
+        "iframe": "",
+        "height": "850px",
+        "enabled": true
+      }
+    ]
   }
 }

@@ -1,14 +1,14 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
   PieChart, Pie, Cell, AreaChart, Area 
 } from 'recharts';
 import { 
   MapPin, Activity, Globe, Maximize2, Minimize2, RefreshCw, 
-  ExternalLink, SlidersHorizontal, ArrowLeftRight, CheckCircle2,
-  Sparkles, AlertCircle, LayoutDashboard, Settings
+  ExternalLink, CheckCircle2, Sparkles, AlertCircle, 
+  LayoutDashboard, Settings, Layers, PlusCircle, ArrowUpRight, BarChart3
 } from 'lucide-react';
-import { parseIframeInput } from '../utils/powerBiUtils';
+import { parseIframeInput, normalizeDashboardTabs } from '../utils/powerBiUtils';
 
 const DONUT_COLORS = ['#10B981', '#3B82F6', '#8B5CF6', '#F59E0B', '#EF4444', '#06B6D4'];
 
@@ -20,16 +20,49 @@ export default function Dashboard({
   setCurrentPage = () => {},
   setActiveAdminTab = () => {}
 }) {
-  const [showOriginalDashboard, setShowOriginalDashboard] = useState(false);
+  // Normalize tabs from summaryData or defaults
+  const allTabs = useMemo(() => {
+    return normalizeDashboardTabs(summaryData?.dashboard_tabs, summaryData);
+  }, [summaryData?.dashboard_tabs, summaryData?.powerbi_iframe]);
+
+  // Filter only enabled tabs (if all disabled, show all)
+  const displayTabs = useMemo(() => {
+    const enabled = allTabs.filter(t => t.enabled !== false);
+    return enabled.length > 0 ? enabled : allTabs;
+  }, [allTabs]);
+
+  const [selectedTabId, setSelectedTabId] = useState(() => displayTabs[0]?.id || 'tab-default');
   const [isLoading, setIsLoading] = useState(true);
   const [iframeKey, setIframeKey] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const iframeContainerRef = useRef(null);
 
-  // Parse Power BI iframe or URL from summaryData
-  const parsedIframe = parseIframeInput(summaryData?.powerbi_iframe || '');
-  const isPowerBiEnabled = summaryData?.powerbi_dashboard_enabled !== false;
-  const hasValidPowerBi = Boolean(parsedIframe.url && isPowerBiEnabled);
+  // Sync selected tab if removed or changed
+  useEffect(() => {
+    if (!displayTabs.some(t => t.id === selectedTabId)) {
+      if (displayTabs.length > 0) {
+        setSelectedTabId(displayTabs[0].id);
+      }
+    }
+  }, [displayTabs, selectedTabId]);
+
+  // Current active tab object
+  const currentTab = useMemo(() => {
+    return displayTabs.find(t => t.id === selectedTabId) || displayTabs[0] || {};
+  }, [displayTabs, selectedTabId]);
+
+  // Parse current iframe if tab is iframe type
+  const parsedCurrentIframe = useMemo(() => {
+    if (currentTab.type === 'iframe') {
+      return parseIframeInput(currentTab.iframe || '');
+    }
+    return { url: '', title: '', height: '', isIframeTag: false };
+  }, [currentTab]);
+
+  // Reset loading whenever active tab or iframe URL changes
+  useEffect(() => {
+    setIsLoading(true);
+  }, [currentTab.id, parsedCurrentIframe.url]);
 
   // Fullscreen change listener
   useEffect(() => {
@@ -39,11 +72,6 @@ export default function Dashboard({
     document.addEventListener('fullscreenchange', handleFsChange);
     return () => document.removeEventListener('fullscreenchange', handleFsChange);
   }, []);
-
-  // Reset loading when URL changes
-  useEffect(() => {
-    setIsLoading(true);
-  }, [parsedIframe.url]);
 
   const toggleFullscreen = () => {
     if (!iframeContainerRef.current) return;
@@ -69,245 +97,11 @@ export default function Dashboard({
   };
 
   // ----------------------------------------------------
-  // Render Power BI Embed Dashboard
-  // ----------------------------------------------------
-  const renderPowerBiDashboard = () => {
-    const isPowerBiSource = (parsedIframe.url || '').toLowerCase().includes('powerbi');
-    const isNsoSource = (parsedIframe.url || '').toLowerCase().includes('nso.go.th');
-    
-    const dashboardTitle = summaryData?.powerbi_title || parsedIframe.title || (
-      isNsoSource ? 'ระบบแดชบอร์ดสถิติจังหวัด (NSO Provincial Dashboard)' : 'ระบบแดชบอร์ดติดตามข้อมูล (Decarbonization Dashboard)'
-    );
-    const customHeight = summaryData?.powerbi_height || parsedIframe.height || '850px';
-
-    const sourceBadge = isPowerBiSource 
-      ? 'Power BI Live Connected' 
-      : isNsoSource 
-      ? 'NSO Stat Dashboard Live' 
-      : 'Interactive Dashboard Live';
-
-    const sourceDescription = isPowerBiSource
-      ? 'ระบบวิเคราะห์และติดตามข้อมูลเชื่อมโยงสดผ่าน Microsoft Power BI Interactive Dashboard'
-      : isNsoSource
-      ? 'ระบบตัวชี้วัดและสถิติการพัฒนาจังหวัดเชื่อมโยงสดผ่าน สำนักงานสถิติแห่งชาติ (NSO)'
-      : 'ระบบวิเคราะห์และติดตามข้อมูลเชื่อมโยงสดผ่าน Interactive Dashboard Embed';
-
-    return (
-      <section className="w-full px-4 sm:px-6 lg:px-12 py-10 sm:py-14 mx-auto space-y-6 max-w-7xl">
-        
-        {/* Header Controls & Status */}
-        <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-slate-200">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2.5">
-              <span className="p-2 text-white bg-amber-500 rounded-xl shadow-xs">
-                <LayoutDashboard className="w-5 h-5" />
-              </span>
-              <h2 className="text-xl sm:text-2xl font-black text-slate-800 tracking-tight">
-                {dashboardTitle}
-              </h2>
-            </div>
-            <p className="text-xs text-slate-400 pl-0.5">
-              {sourceDescription}
-            </p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-[11px] font-bold px-3 py-1.5 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-700 font-mono flex items-center gap-1.5 shadow-2xs">
-              <span className="relative flex w-2 h-2">
-                <span className="absolute inline-flex w-full h-full rounded-full opacity-75 animate-ping bg-emerald-400"></span>
-                <span className="relative inline-flex w-2 h-2 rounded-full bg-emerald-500"></span>
-              </span>
-              <span>{sourceBadge}</span>
-            </span>
-
-            {/* Switch to Legacy Dashboard */}
-            <button
-              onClick={() => setShowOriginalDashboard(true)}
-              className="px-3 py-1.5 text-xs font-bold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 hover:text-slate-900 rounded-xl flex items-center gap-1.5 transition shadow-2xs"
-              title="สลับดูข้อมูลแดชบอร์ดระบบเดิม"
-            >
-              <ArrowLeftRight className="w-3.5 h-3.5 text-slate-500" />
-              <span>ดูแดชบอร์ดเดิม</span>
-            </button>
-
-            {/* Reload iFrame */}
-            <button
-              onClick={handleRefresh}
-              className="p-2 text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 hover:text-slate-900 rounded-xl transition shadow-2xs"
-              title="รีเฟรชข้อมูลแดชบอร์ด"
-            >
-              <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin text-emerald-600' : ''}`} />
-            </button>
-
-            {/* Open in new window */}
-            <a
-              href={parsedIframe.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="p-2 text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 hover:text-slate-900 rounded-xl transition shadow-2xs"
-              title="เปิดแดชบอร์ดในแท็บใหม่"
-            >
-              <ExternalLink className="w-4 h-4" />
-            </a>
-
-            {/* Fullscreen Toggle */}
-            <button
-              onClick={toggleFullscreen}
-              className="px-3 py-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 rounded-xl flex items-center gap-1.5 transition shadow-2xs"
-              title={isFullscreen ? 'ออกจากโหมดเต็มจอ' : 'แสดงผลเต็มหน้าจอ'}
-            >
-              {isFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
-              <span>{isFullscreen ? 'ย่อหน้าจอ' : 'เต็มจอ'}</span>
-            </button>
-
-            {/* Quick Admin Settings Button */}
-            {isAuthenticated && (
-              <button
-                onClick={handleGoToAdmin}
-                className="px-3 py-1.5 text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200 hover:bg-blue-100 rounded-xl flex items-center gap-1.5 transition shadow-2xs"
-                title="แก้ไขโค้ด iFrame หรือการตั้งค่า Power BI"
-              >
-                <Settings className="w-3.5 h-3.5 text-blue-600" />
-                <span>แก้ไข &lt;iframe&gt;</span>
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* The Power BI iFrame Container */}
-        <div 
-          ref={iframeContainerRef}
-          className={`relative w-full bg-slate-950 rounded-3xl border border-slate-200/90 shadow-md overflow-hidden transition-all duration-300 ${
-            isFullscreen ? 'p-0 rounded-none' : ''
-          }`}
-          style={{ 
-            height: isFullscreen ? '100vh' : customHeight,
-            minHeight: isFullscreen ? '100vh' : '650px' 
-          }}
-        >
-          {/* Loading Indicator */}
-          {isLoading && (
-            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-slate-900/90 backdrop-blur-xs text-white space-y-4">
-              <div className="relative flex items-center justify-center w-14 h-14">
-                <div className="w-14 h-14 border-4 border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin"></div>
-                <LayoutDashboard className="absolute w-6 h-6 text-emerald-400" />
-              </div>
-              <div className="text-center space-y-1">
-                <p className="text-sm font-bold text-slate-100">กำลังเชื่อมต่อและโหลดแดชบอร์ด Power BI...</p>
-                <p className="text-xs text-slate-400 font-mono">กรุณารอสักครู่ ระบบกำลังเรนเดอร์ข้อมูลแบบเรียลไทม์</p>
-              </div>
-            </div>
-          )}
-
-          {/* Embedded iFrame */}
-          <iframe
-            key={iframeKey}
-            src={parsedIframe.url}
-            title={dashboardTitle}
-            className="w-full h-full border-0 bg-white"
-            allowFullScreen={true}
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            onLoad={() => setIsLoading(false)}
-          />
-        </div>
-
-        {/* Footer Notes & Metadata */}
-        <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-[11px] text-slate-500 font-mono">
-          <div className="flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-            <span>แหล่งข้อมูล: {isPowerBiSource ? 'ระบบเชื่อมต่อ Microsoft Power BI Service' : isNsoSource ? 'ระบบสถิติการพัฒนาจังหวัด สำนักงานสถิติแห่งชาติ (NSO)' : 'ระบบเชื่อมต่อ Interactive Dashboard'} ผ่าน iframe sandbox</span>
-          </div>
-          <div className="flex items-center gap-3">
-            <span>สถานะ: แสดงผลทดแทนแดชบอร์ดเดิมอัตโนมัติ</span>
-            {isAuthenticated && (
-              <button 
-                onClick={handleGoToAdmin} 
-                className="text-emerald-700 underline font-bold hover:text-emerald-800"
-              >
-                เปลี่ยน &lt;iframe&gt; ในระบบหลังบ้าน
-              </button>
-            )}
-          </div>
-        </div>
-
-      </section>
-    );
-  };
-
-  // ----------------------------------------------------
-  // Render Original Dashboard (Fallback or when toggled)
+  // Render Built-in Decarbonization Dashboard
   // ----------------------------------------------------
   const renderOriginalDashboard = () => {
     return (
-      <section className="w-full px-6 py-16 mx-auto space-y-8 lg:px-12 max-w-7xl animate-in fade-in duration-200">
-        
-        {/* Banner if Power BI is available but user is previewing original */}
-        {hasValidPowerBi && (
-          <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl flex flex-wrap items-center justify-between gap-3 shadow-xs">
-            <div className="flex items-center gap-2.5">
-              <span className="p-1.5 bg-amber-500 text-white rounded-lg">
-                <SlidersHorizontal className="w-4 h-4" />
-              </span>
-              <div>
-                <strong className="text-xs font-bold text-amber-900 block">คุณกำลังเปิดดูแดชบอร์ดระบบเดิม (Legacy Mode)</strong>
-                <p className="text-[11px] text-amber-700">ระบบมีการผูกแดชบอร์ด Power BI ไว้แล้ว คุณสามารถกดสลับกลับไปดู Power BI ได้ตลอดเวลา</p>
-              </div>
-            </div>
-            <button
-              onClick={() => setShowOriginalDashboard(false)}
-              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 transition shadow-xs"
-            >
-              <LayoutDashboard className="w-4 h-4" />
-              <span>กลับสู่แดชบอร์ด Power BI</span>
-            </button>
-          </div>
-        )}
-
-        {/* Banner if No Power BI is configured yet, with direct prompt for admin */}
-        {!hasValidPowerBi && (
-          <div className="p-4 bg-emerald-50/70 border border-emerald-200/80 rounded-2xl flex flex-wrap items-center justify-between gap-3 shadow-xs">
-            <div className="flex items-center gap-2.5">
-              <span className="p-2 bg-emerald-600 text-white rounded-xl">
-                <Sparkles className="w-4 h-4" />
-              </span>
-              <div>
-                <strong className="text-xs font-bold text-emerald-950 block">แดชบอร์ดติดตามคาร์บอน (กำลังแสดงผลเวอร์ชันเริ่มต้น)</strong>
-                <p className="text-[11px] text-emerald-800">
-                  รองรับการผูกระบบกับ Microsoft Power BI ผ่านโค้ด <code>&lt;iframe&gt;</code> หรือ URL เพื่อนำมารายงานแทนแดชบอร์ดนี้ได้ตลอดเวลา
-                </p>
-              </div>
-            </div>
-            {isAuthenticated ? (
-              <button
-                onClick={handleGoToAdmin}
-                className="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 transition shadow-xs"
-              >
-                <Settings className="w-4 h-4" />
-                <span>ตั้งค่า Power BI &lt;iframe&gt; ในระบบหลังบ้าน</span>
-              </button>
-            ) : (
-              <span className="text-[11px] text-slate-500 font-mono">
-                ผู้ดูแลระบบสามารถเข้าสู่หลังบ้านเพื่อกรอก &lt;iframe&gt; ได้
-              </span>
-            )}
-          </div>
-        )}
-
-        {/* Header title */}
-        <div className="flex flex-wrap items-center justify-between gap-4 pb-5 border-b border-slate-200">
-          <div className="space-y-1">
-            <h2 className="flex items-center gap-2 text-2xl font-black text-slate-800">
-              <Activity className="w-6 h-6 text-emerald-600" />
-              <span>ระบบแดชบอร์ดติดตามคาร์บอน (Decarbonization Dashboard)</span>
-            </h2>
-            <p className="text-xs text-slate-400">สถานะก๊าซเรือนกระจกที่ประหยัดได้จริงเชิงพื้นที่และจำแนกรายแหล่งกำเนิดอัปเดตแบบเรียลไทม์</p>
-          </div>
-          <span className="text-[10px] font-bold px-3 py-1.5 bg-emerald-50 border border-emerald-150 rounded-xl text-emerald-700 font-mono flex items-center gap-1">
-            <Globe className="w-3.5 h-3.5 animate-spin" />
-            <span>Real-time Data Active</span>
-          </span>
-        </div>
-
+      <div className="space-y-8 animate-in fade-in duration-200">
         {/* Row 1: Donut circular progress and KPI grid */}
         <div className="grid items-stretch grid-cols-1 gap-8 lg:grid-cols-12">
           
@@ -555,15 +349,259 @@ export default function Dashboard({
           </div>
 
         </div>
-
-      </section>
+      </div>
     );
   };
 
-  // Main Return: If Power BI is active and user has not toggled to legacy view, render Power BI!
-  if (hasValidPowerBi && !showOriginalDashboard) {
-    return renderPowerBiDashboard();
-  }
+  // ----------------------------------------------------
+  // Render iFrame Dashboard (Power BI, NSO, etc.)
+  // ----------------------------------------------------
+  const renderIframeDashboard = () => {
+    const isPowerBiSource = (parsedCurrentIframe.url || '').toLowerCase().includes('powerbi');
+    const isNsoSource = (parsedCurrentIframe.url || '').toLowerCase().includes('nso.go.th');
+    
+    const customHeight = currentTab.height || parsedCurrentIframe.height || '850px';
 
-  return renderOriginalDashboard();
+    if (!parsedCurrentIframe.url) {
+      return (
+        <div className="p-12 text-center bg-white border border-dashed rounded-3xl border-slate-300 space-y-4">
+          <div className="flex items-center justify-center w-14 h-14 mx-auto bg-amber-50 rounded-2xl text-amber-600">
+            <AlertCircle className="w-8 h-8" />
+          </div>
+          <div className="space-y-1">
+            <h4 className="text-sm font-bold text-slate-800">ยังไม่ได้ใส่ลิงก์หรือโค้ด &lt;iframe&gt; สำหรับแท็บนี้</h4>
+            <p className="text-xs text-slate-500 max-w-md mx-auto">
+              คุณสามารถเข้าไปที่ระบบหลังบ้าน (Admin) เพื่อวางโค้ด &lt;iframe&gt; หรือ URL ของ Power BI ในแท็บนี้ได้ตลอดเวลา
+            </p>
+          </div>
+          {isAuthenticated && (
+            <button
+              onClick={handleGoToAdmin}
+              className="px-4 py-2 text-xs font-bold text-white transition bg-emerald-600 rounded-xl hover:bg-emerald-700 shadow-sm inline-flex items-center gap-1.5"
+            >
+              <Settings className="w-4 h-4" />
+              <span>ไปตั้งค่า &lt;iframe&gt; ในระบบหลังบ้าน</span>
+            </button>
+          )}
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-4 animate-in fade-in duration-200">
+        {/* The iFrame Container */}
+        <div 
+          ref={iframeContainerRef}
+          className={`relative w-full bg-slate-950 rounded-3xl border border-slate-200/90 shadow-md overflow-hidden transition-all duration-300 ${
+            isFullscreen ? 'p-0 rounded-none' : ''
+          }`}
+          style={{ 
+            height: isFullscreen ? '100vh' : customHeight,
+            minHeight: isFullscreen ? '100vh' : '650px' 
+          }}
+        >
+          {/* Loading Indicator */}
+          {isLoading && (
+            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-slate-900/90 backdrop-blur-xs text-white space-y-4">
+              <div className="relative flex items-center justify-center w-14 h-14">
+                <div className="w-14 h-14 border-4 border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin"></div>
+                <LayoutDashboard className="absolute w-6 h-6 text-emerald-400" />
+              </div>
+              <div className="text-center space-y-1">
+                <p className="text-sm font-bold text-slate-100">กำลังเชื่อมต่อและโหลดแดชบอร์ด...</p>
+                <p className="text-xs text-slate-400 font-mono">กรุณารอสักครู่ ระบบกำลังเรนเดอร์ข้อมูล</p>
+              </div>
+            </div>
+          )}
+
+          {/* Embedded iFrame */}
+          <iframe
+            key={iframeKey}
+            src={parsedCurrentIframe.url}
+            title={currentTab.title}
+            className="w-full h-full border-0 bg-white"
+            allowFullScreen={true}
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+            loading="lazy"
+            onLoad={() => setIsLoading(false)}
+          />
+        </div>
+
+        {/* Footer Notes & Metadata */}
+        <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-[11px] text-slate-500 font-mono">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+            <span>
+              แหล่งข้อมูล: {isPowerBiSource ? 'ระบบเชื่อมต่อ Microsoft Power BI Service' : isNsoSource ? 'ระบบสถิติการพัฒนาจังหวัด สำนักงานสถิติแห่งชาติ (NSO)' : 'ระบบเชื่อมต่อ Interactive Dashboard'} ผ่าน iframe sandbox
+            </span>
+          </div>
+          <div className="flex items-center gap-3">
+            <a 
+              href={parsedCurrentIframe.url} 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="text-slate-600 hover:text-emerald-700 flex items-center gap-1 font-bold"
+            >
+              <span>เปิดลิงก์ตรงในหน้าต่างใหม่</span>
+              <ArrowUpRight className="w-3.5 h-3.5" />
+            </a>
+            {isAuthenticated && (
+              <button 
+                onClick={handleGoToAdmin} 
+                className="text-emerald-700 underline font-bold hover:text-emerald-800"
+              >
+                แก้ไขแท็บนี้ในระบบหลังบ้าน
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Determine Badge Label
+  const isIframeTab = currentTab.type === 'iframe';
+  const isPowerBiSource = isIframeTab && (parsedCurrentIframe.url || '').toLowerCase().includes('powerbi');
+  const isNsoSource = isIframeTab && (parsedCurrentIframe.url || '').toLowerCase().includes('nso.go.th');
+
+  const sourceBadge = !isIframeTab 
+    ? 'Real-time System Data' 
+    : isPowerBiSource 
+    ? 'Power BI Live Connected' 
+    : isNsoSource 
+    ? 'NSO Stat Dashboard Live' 
+    : 'Interactive Dashboard Live';
+
+  return (
+    <section className="w-full px-4 sm:px-6 lg:px-12 py-10 sm:py-14 mx-auto space-y-6 max-w-7xl">
+      
+      {/* ========================================================
+          MULTI-TAB NAVIGATION BAR (กำหนดและเพิ่ม-ลดได้)
+         ======================================================== */}
+      <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-200">
+        <div className="flex items-center gap-2 overflow-x-auto py-1 no-scrollbar max-w-full">
+          {displayTabs.map((tab) => {
+            const isActive = tab.id === selectedTabId;
+            const isTabOriginal = tab.type === 'original';
+
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setSelectedTabId(tab.id)}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold transition-all shrink-0 cursor-pointer shadow-2xs ${
+                  isActive
+                    ? 'bg-emerald-600 text-white shadow-sm ring-2 ring-emerald-600/30'
+                    : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
+                }`}
+              >
+                {isTabOriginal ? (
+                  <BarChart3 className={`w-4 h-4 ${isActive ? 'text-white' : 'text-emerald-600'}`} />
+                ) : (
+                  <LayoutDashboard className={`w-4 h-4 ${isActive ? 'text-white' : 'text-blue-600'}`} />
+                )}
+                <span>{tab.title}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Quick Admin Tab Management Button */}
+        {isAuthenticated && (
+          <button
+            onClick={handleGoToAdmin}
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-xl transition cursor-pointer"
+            title="เพิ่ม-ลด หรือแก้ไขแท็บแดชบอร์ดในระบบหลังบ้าน"
+          >
+            <Settings className="w-3.5 h-3.5 text-slate-600" />
+            <span>จัดการแท็บ (เพิ่ม/ลบ)</span>
+          </button>
+        )}
+      </div>
+
+      {/* ========================================================
+          TAB CONTENT HEADER
+         ======================================================== */}
+      <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-slate-200/80">
+        <div className="space-y-1 max-w-2xl">
+          <div className="flex items-center gap-2.5">
+            <span className={`p-2 text-white rounded-xl shadow-xs ${isIframeTab ? 'bg-blue-600' : 'bg-emerald-600'}`}>
+              {isIframeTab ? <LayoutDashboard className="w-5 h-5" /> : <Activity className="w-5 h-5" />}
+            </span>
+            <h2 className="text-xl sm:text-2xl font-black text-slate-800 tracking-tight">
+              {currentTab.title}
+            </h2>
+          </div>
+          {currentTab.description && (
+            <p className="text-xs text-slate-500 pl-0.5 leading-relaxed">
+              {currentTab.description}
+            </p>
+          )}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Status Badge */}
+          <span className="text-[11px] font-bold px-3 py-1.5 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-700 font-mono flex items-center gap-1.5 shadow-2xs">
+            <span className="relative flex w-2 h-2">
+              <span className="absolute inline-flex w-full h-full rounded-full opacity-75 animate-ping bg-emerald-400"></span>
+              <span className="relative inline-flex w-2 h-2 rounded-full bg-emerald-500"></span>
+            </span>
+            <span>{sourceBadge}</span>
+          </span>
+
+          {/* Controls (for iframe tabs) */}
+          {isIframeTab && parsedCurrentIframe.url && (
+            <>
+              {/* Reload iFrame */}
+              <button
+                onClick={handleRefresh}
+                className="p-2 text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 hover:text-slate-900 rounded-xl transition shadow-2xs cursor-pointer"
+                title="รีเฟรชข้อมูลแดชบอร์ด"
+              >
+                <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin text-emerald-600' : ''}`} />
+              </button>
+
+              {/* Open in new window */}
+              <a
+                href={parsedCurrentIframe.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-2 text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 hover:text-slate-900 rounded-xl transition shadow-2xs cursor-pointer"
+                title="เปิดแดชบอร์ดในแท็บใหม่"
+              >
+                <ExternalLink className="w-4 h-4" />
+              </a>
+
+              {/* Fullscreen Toggle */}
+              <button
+                onClick={toggleFullscreen}
+                className="px-3 py-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 rounded-xl flex items-center gap-1.5 transition shadow-2xs cursor-pointer"
+                title={isFullscreen ? 'ออกจากโหมดเต็มจอ' : 'แสดงผลเต็มหน้าจอ'}
+              >
+                {isFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+                <span>{isFullscreen ? 'ย่อหน้าจอ' : 'เต็มจอ'}</span>
+              </button>
+            </>
+          )}
+
+          {/* Quick Admin Tab Edit */}
+          {isAuthenticated && (
+            <button
+              onClick={handleGoToAdmin}
+              className="px-3 py-1.5 text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200 hover:bg-blue-100 rounded-xl flex items-center gap-1.5 transition shadow-2xs cursor-pointer"
+              title="แก้ไขแท็บนี้ในระบบหลังบ้าน"
+            >
+              <Settings className="w-3.5 h-3.5 text-blue-600" />
+              <span>แก้ไขแท็บ</span>
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* ========================================================
+          TAB CONTENT BODY (Original vs iFrame)
+         ========================================================= */}
+      {isIframeTab ? renderIframeDashboard() : renderOriginalDashboard()}
+
+    </section>
+  );
 }

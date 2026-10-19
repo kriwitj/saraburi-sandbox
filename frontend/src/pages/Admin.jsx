@@ -4,10 +4,11 @@ import {
   ChevronRight, ChevronLeft, Lock, Eye, AlertCircle, Globe, Terminal, LogOut,
   Pencil, Trash2, TrendingUp, Sparkles, Images, CheckCircle2, Save,
   ArrowUpRight, BarChart3, Check, RefreshCw, Loader2, Search,
-  ArrowUpDown, Filter, X, LayoutDashboard, ExternalLink, Code
+  ArrowUpDown, Filter, X, LayoutDashboard, ExternalLink, Code,
+  Layers, MoveUp, MoveDown, PlusCircle
 } from 'lucide-react';
 import NewsFormModal from '../components/NewsFormModal';
-import { parseIframeInput, DEMO_POWERBI_IFRAME } from '../utils/powerBiUtils';
+import { parseIframeInput, DEMO_POWERBI_IFRAME, normalizeDashboardTabs } from '../utils/powerBiUtils';
 
 export default function Admin({
   isAuthenticated,
@@ -66,12 +67,13 @@ export default function Admin({
   const [isSavingProject, setIsSavingProject] = useState(false);
   const [isSavingActivity, setIsSavingActivity] = useState(false);
 
-  // Power BI Embed Management State
-  const [powerBiForm, setPowerBiForm] = useState({
-    powerbi_iframe: summaryData?.powerbi_iframe || '',
-    powerbi_dashboard_enabled: summaryData?.powerbi_dashboard_enabled !== false,
-    powerbi_title: summaryData?.powerbi_title || 'ระบบแดชบอร์ดติดตามคาร์บอน (Decarbonization Dashboard)',
-    powerbi_height: summaryData?.powerbi_height || '850px',
+  // Multi-Tab Dashboard Management State
+  const [dashboardTabs, setDashboardTabs] = useState(() => {
+    return normalizeDashboardTabs(summaryData?.dashboard_tabs, summaryData);
+  });
+  const [activeEditingTabId, setActiveEditingTabId] = useState(() => {
+    const init = normalizeDashboardTabs(summaryData?.dashboard_tabs, summaryData);
+    return init[0]?.id || 'tab-default';
   });
   const [isSavingPowerBi, setIsSavingPowerBi] = useState(false);
   const [powerBiSaved, setPowerBiSaved] = useState(false);
@@ -166,16 +168,71 @@ export default function Admin({
   useEffect(() => {
     if (summaryData) {
       setEditingSummary(summaryData);
-      setPowerBiForm({
-        powerbi_iframe: summaryData.powerbi_iframe || '',
-        powerbi_dashboard_enabled: summaryData.powerbi_dashboard_enabled !== false,
-        powerbi_title: summaryData.powerbi_title || 'ระบบแดชบอร์ดติดตามคาร์บอน (Decarbonization Dashboard)',
-        powerbi_height: summaryData.powerbi_height || '850px',
-      });
+      const normalized = normalizeDashboardTabs(summaryData?.dashboard_tabs, summaryData);
+      setDashboardTabs(normalized);
+      if (!normalized.some(t => t.id === activeEditingTabId)) {
+        setActiveEditingTabId(normalized[0]?.id || 'tab-default');
+      }
     }
   }, [summaryData]);
 
-  const handleSavePowerBi = async (e) => {
+  const handleAddTab = () => {
+    const newId = `tab-${Date.now()}`;
+    const newTab = {
+      id: newId,
+      title: `แดชบอร์ดแท็บใหม่ ${dashboardTabs.length + 1}`,
+      description: 'ระบุรายละเอียดคำอธิบายของแท็บแดชบอร์ดนี้',
+      type: 'iframe', // 'iframe' or 'original'
+      iframe: '',
+      height: '850px',
+      enabled: true
+    };
+    setDashboardTabs(prev => [...prev, newTab]);
+    setActiveEditingTabId(newId);
+  };
+
+  const handleDeleteTab = (idToDelete) => {
+    if (dashboardTabs.length <= 1) {
+      alert("ต้องมีแท็บแดชบอร์ดอย่างน้อย 1 แท็บในระบบ");
+      return;
+    }
+    if (window.confirm("คุณแน่ใจหรือไม่ว่าต้องการลบแท็บแดชบอร์ดนี้?")) {
+      const remaining = dashboardTabs.filter(t => t.id !== idToDelete);
+      setDashboardTabs(remaining);
+      if (activeEditingTabId === idToDelete) {
+        setActiveEditingTabId(remaining[0]?.id || '');
+      }
+    }
+  };
+
+  const handleMoveTab = (index, direction) => {
+    const newIndex = direction === 'up' ? index - 1 : index + 1;
+    if (newIndex < 0 || newIndex >= dashboardTabs.length) return;
+    const updated = [...dashboardTabs];
+    const [moved] = updated.splice(index, 1);
+    updated.splice(newIndex, 0, moved);
+    setDashboardTabs(updated);
+  };
+
+  const handleUpdateActiveTabField = (field, value) => {
+    setDashboardTabs(prev => prev.map(t => {
+      if (t.id === activeEditingTabId) {
+        return { ...t, [field]: value };
+      }
+      return t;
+    }));
+  };
+
+  const handleToggleTabEnabled = (tabId) => {
+    setDashboardTabs(prev => prev.map(t => {
+      if (t.id === tabId) {
+        return { ...t, enabled: !t.enabled };
+      }
+      return t;
+    }));
+  };
+
+  const handleSaveAllDashboardTabs = async (e) => {
     if (e) e.preventDefault();
     if (isSavingPowerBi) return;
     setIsSavingPowerBi(true);
@@ -183,17 +240,19 @@ export default function Admin({
 
     try {
       if (onUpdateSummary) {
+        const firstIframeTab = dashboardTabs.find(t => t.type === 'iframe' && t.iframe);
         await onUpdateSummary({
-          powerbi_iframe: powerBiForm.powerbi_iframe.trim(),
-          powerbi_dashboard_enabled: powerBiForm.powerbi_dashboard_enabled,
-          powerbi_title: powerBiForm.powerbi_title.trim(),
-          powerbi_height: powerBiForm.powerbi_height.trim() || '850px',
+          dashboard_tabs: dashboardTabs,
+          powerbi_iframe: firstIframeTab ? firstIframeTab.iframe : '',
+          powerbi_dashboard_enabled: true,
+          powerbi_title: firstIframeTab ? firstIframeTab.title : 'ระบบแดชบอร์ด',
+          powerbi_height: firstIframeTab ? firstIframeTab.height : '850px'
         });
         setPowerBiSaved(true);
         setTimeout(() => setPowerBiSaved(false), 3500);
       }
     } catch (err) {
-      alert("บันทึกการตั้งค่า Power BI ไม่สำเร็จ: " + (err?.message || ''));
+      alert("บันทึกการตั้งค่าแท็บแดชบอร์ดไม่สำเร็จ: " + (err?.message || ''));
     } finally {
       setIsSavingPowerBi(false);
     }
@@ -1213,232 +1272,385 @@ export default function Admin({
           )}
 
           {/* ========================================================
-              TAB 5: POWER BI DASHBOARD & API GATEWAY
+              TAB 5: POWER BI MULTI-TAB DASHBOARD MANAGER
              ======================================================== */}
           {activeAdminTab === 'api' && (() => {
-            const parsedPreview = parseIframeInput(powerBiForm.powerbi_iframe);
-            const isPowerBiActive = Boolean(parsedPreview.url && powerBiForm.powerbi_dashboard_enabled);
+            const currentTab = dashboardTabs.find(t => t.id === activeEditingTabId) || dashboardTabs[0] || {};
+            const parsedPreview = parseIframeInput(currentTab.iframe || '');
 
             return (
-              <div className="space-y-8 animate-in fade-in duration-150">
-                
+              <div className="space-y-6 animate-in fade-in duration-150">
                 {/* Section Header */}
                 <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-slate-100">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
-                      <LayoutDashboard className="w-5 h-5 text-blue-600" />
-                      <h4 className="text-sm font-black text-slate-800">จัดการเชื่อมโยง Power BI & โค้ด &lt;iframe&gt;</h4>
+                      <Layers className="w-5 h-5 text-emerald-600" />
+                      <h4 className="text-sm font-black text-slate-800">จัดการแท็บแดชบอร์ด & Power BI (Multi-Tab Dashboard)</h4>
                     </div>
                     <p className="text-xs text-slate-500">
-                      กรอกโค้ด &lt;iframe&gt; หรือ URL เพื่อนำมารายงานแทนแดชบอร์ดเดิมบนหน้า <code className="px-1 py-0.5 bg-slate-100 rounded text-emerald-700 font-bold">/dashboard</code> (ปรับเปลี่ยนได้ตลอดเวลา)
+                      เพิ่ม-ลดแท็บแดชบอร์ด กำหนดชื่อแท็บ รายละเอียด และใส่โค้ด <code>&lt;iframe&gt;</code> ของ Power BI สำหรับแสดงผลบนหน้า <code className="px-1 py-0.5 bg-slate-100 rounded text-emerald-700 font-bold">/dashboard</code>
                     </p>
                   </div>
-                  
-                  {/* Status Indicator */}
+
                   <div className="flex items-center gap-2">
-                    {isPowerBiActive ? (
-                      <span className="text-[11px] font-bold px-3 py-1.5 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl flex items-center gap-1.5 shadow-2xs">
-                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                        <span>แสดงผล Power BI แทนแดชบอร์ดเดิมอยู่</span>
-                      </span>
-                    ) : (
-                      <span className="text-[11px] font-bold px-3 py-1.5 bg-slate-100 border border-slate-200 text-slate-600 rounded-xl flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full bg-slate-400"></span>
-                        <span>แสดงผลแดชบอร์ดระบบเดิม (Default)</span>
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                {/* 1. Embed Settings Form Card */}
-                <div className="p-6 bg-slate-50 border border-slate-200/90 rounded-3xl space-y-6 shadow-xs">
-                  
-                  {/* Top Switch Banner */}
-                  <div className="flex flex-wrap items-center justify-between gap-4 p-4 bg-white border border-slate-200 rounded-2xl">
-                    <div className="space-y-0.5">
-                      <strong className="text-xs font-bold text-slate-800 flex items-center gap-2">
-                        <span>เปิดใช้งาน Power BI แดชบอร์ดบนหน้าเว็บ (/dashboard)</span>
-                      </strong>
-                      <p className="text-[11px] text-slate-500">
-                        เมื่อเปิดใช้งาน ระบบจะนำ &lt;iframe&gt; ด้านล่างไปแสดงผลแทนที่แดชบอร์ดเดิมทันที
-                      </p>
-                    </div>
-
-                    <label className="relative inline-flex items-center cursor-pointer select-none">
-                      <input 
-                        type="checkbox" 
-                        checked={powerBiForm.powerbi_dashboard_enabled}
-                        onChange={(e) => setPowerBiForm(prev => ({ ...prev, powerbi_dashboard_enabled: e.target.checked }))}
-                        className="sr-only peer"
-                      />
-                      <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
-                      <span className="ml-2.5 text-xs font-bold text-slate-700">
-                        {powerBiForm.powerbi_dashboard_enabled ? 'เปิดใช้งาน' : 'ปิดใช้งาน'}
-                      </span>
-                    </label>
-                  </div>
-
-                  {/* iFrame Code / URL Input */}
-                  <div className="space-y-2">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-                        <Code className="w-4 h-4 text-emerald-600" />
-                        <span>โค้ด &lt;iframe&gt; หรือ ลิงก์ URL ของ Power BI Dashboard</span>
-                        <span className="text-red-500">*</span>
-                      </label>
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setPowerBiForm(prev => ({ ...prev, powerbi_iframe: DEMO_POWERBI_IFRAME }))}
-                          className="px-2.5 py-1 text-[11px] font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition flex items-center gap-1 shadow-2xs"
-                        >
-                          <Sparkles className="w-3.5 h-3.5" />
-                          <span>ใส่ตัวอย่าง Power BI (Demo)</span>
-                        </button>
-                        {powerBiForm.powerbi_iframe && (
-                          <button
-                            type="button"
-                            onClick={() => setPowerBiForm(prev => ({ ...prev, powerbi_iframe: '' }))}
-                            className="px-2.5 py-1 text-[11px] font-bold text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg transition shadow-2xs"
-                          >
-                            ล้างข้อมูล
-                          </button>
-                        )}
-                      </div>
-                    </div>
-
-                    <textarea
-                      rows={5}
-                      value={powerBiForm.powerbi_iframe}
-                      onChange={(e) => setPowerBiForm(prev => ({ ...prev, powerbi_iframe: e.target.value }))}
-                      placeholder='<iframe title="Decarbonization Dashboard" width="100%" height="800" src="https://app.powerbi.com/view?r=..." frameborder="0" allowFullScreen="true"></iframe> หรือวางเฉพาะ URL เช่น https://app.powerbi.com/view?r=...'
-                      className="w-full p-3 font-mono text-xs border rounded-xl border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
-                    />
-
-                    {/* How to get iframe tips */}
-                    <div className="p-3 bg-blue-50/70 border border-blue-150 rounded-xl text-[11px] text-blue-900 space-y-1">
-                      <strong className="block font-bold">💡 วิธีนำโค้ด &lt;iframe&gt; มาจาก Power BI:</strong>
-                      <ol className="list-decimal list-inside space-y-0.5 text-blue-800 text-[10.5px]">
-                        <li>เปิดรายงานที่ต้องการใน <strong>Microsoft Power BI Service (app.powerbi.com)</strong></li>
-                        <li>ไปที่เมนู <strong>File (ไฟล์)</strong> &gt; <strong>Embed report (ฝังรายงาน)</strong> &gt; เลือก <strong>Publish to web (public)</strong> หรือ <strong>Website or portal</strong></li>
-                        <li>คัดลอกโค้ด HTML <code>&lt;iframe&gt;</code> ทั้งหมด หรือคัดลอกเฉพาะลิงก์ <code>src="..."</code> มาวางในช่องด้านบนนี้</li>
-                        <li>กดปุ่ม <strong>"บันทึกการตั้งค่าแดชบอร์ด"</strong> ด้านล่าง ระบบจะอัปเดตไปแสดงผลบนหน้า <code>/dashboard</code> ทันที</li>
-                      </ol>
-                    </div>
-                  </div>
-
-                  {/* Settings Grid: Title & Height */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-1">
-                      <label className="text-xs font-bold text-slate-700">ชื่อหัวข้อแดชบอร์ด (Dashboard Title)</label>
-                      <input 
-                        type="text"
-                        value={powerBiForm.powerbi_title}
-                        onChange={(e) => setPowerBiForm(prev => ({ ...prev, powerbi_title: e.target.value }))}
-                        placeholder="ระบบแดชบอร์ดติดตามคาร์บอน (Decarbonization Dashboard)"
-                        className="w-full p-2.5 text-xs border rounded-xl border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
-                      />
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="text-xs font-bold text-slate-700">ความสูงของกรอบแดชบอร์ด (Height)</label>
-                      <select
-                        value={powerBiForm.powerbi_height}
-                        onChange={(e) => setPowerBiForm(prev => ({ ...prev, powerbi_height: e.target.value }))}
-                        className="w-full p-2.5 text-xs border rounded-xl border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white cursor-pointer"
-                      >
-                        <option value="750px">750px (ขนาดกะทัดรัด)</option>
-                        <option value="850px">850px (มาตรฐาน แนะนำ)</option>
-                        <option value="950px">950px (ขยายใหญ่)</option>
-                        <option value="1050px">1050px (รายงานขนาดยาว)</option>
-                        <option value="calc(100vh - 160px)">calc(100vh - 160px) (พอดีจอ Responsive)</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* Action Buttons */}
-                  <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-200">
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={handleSavePowerBi}
-                        disabled={isSavingPowerBi}
-                        className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold text-xs rounded-xl flex items-center gap-2 transition shadow-sm cursor-pointer"
-                      >
-                        {isSavingPowerBi ? (
-                          <>
-                            <RefreshCw className="w-4 h-4 animate-spin" />
-                            <span>กำลังบันทึก...</span>
-                          </>
-                        ) : powerBiSaved ? (
-                          <>
-                            <Check className="w-4 h-4 text-emerald-200" />
-                            <span>บันทึกสำเร็จเรียบร้อย!</span>
-                          </>
-                        ) : (
-                          <>
-                            <Save className="w-4 h-4" />
-                            <span>บันทึกการตั้งค่าแดชบอร์ด</span>
-                          </>
-                        )}
-                      </button>
-
-                      {powerBiSaved && (
-                        <span className="text-xs font-bold text-emerald-600 animate-in fade-in">
-                          อัปเดตระบบเรียบร้อย สามารถเปิดดูหน้าแดชบอร์ดได้ทันที
-                        </span>
-                      )}
-                    </div>
+                    <button
+                      type="button"
+                      onClick={handleAddTab}
+                      className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 transition shadow-2xs cursor-pointer"
+                    >
+                      <PlusCircle className="w-4 h-4" />
+                      <span>เพิ่มแท็บใหม่</span>
+                    </button>
 
                     <button
                       type="button"
                       onClick={() => setCurrentPage('dashboard')}
-                      className="px-4 py-2.5 bg-white hover:bg-slate-100 border border-slate-300 text-slate-700 font-bold text-xs rounded-xl flex items-center gap-1.5 transition shadow-2xs cursor-pointer"
+                      className="px-3.5 py-2 bg-white hover:bg-slate-100 border border-slate-300 text-slate-700 font-bold text-xs rounded-xl flex items-center gap-1.5 transition shadow-2xs cursor-pointer"
                     >
                       <Eye className="w-4 h-4 text-emerald-600" />
-                      <span>เปิดดูหน้าแดชบอร์ดจริง (/dashboard)</span>
+                      <span>ดูหน้าแดชบอร์ด</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Main 2-Column Split: Tabs List (Left) & Active Tab Editor (Right) */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                  
+                  {/* Left Column: Tabs List (4 cols) */}
+                  <div className="lg:col-span-4 space-y-3">
+                    <div className="flex items-center justify-between pb-2 border-b border-slate-200/80">
+                      <span className="text-xs font-bold text-slate-700">รายการแท็บทั้งหมด ({dashboardTabs.length})</span>
+                      <span className="text-[10px] text-slate-400 font-mono">เรียงลำดับ</span>
+                    </div>
+
+                    <div className="space-y-2">
+                      {dashboardTabs.map((tab, idx) => {
+                        const isSelected = tab.id === activeEditingTabId;
+                        const isOriginal = tab.type === 'original';
+
+                        return (
+                          <div
+                            key={tab.id}
+                            onClick={() => setActiveEditingTabId(tab.id)}
+                            className={`p-3 rounded-2xl border transition-all cursor-pointer relative ${
+                              isSelected
+                                ? 'bg-emerald-50/70 border-emerald-400 shadow-xs ring-1 ring-emerald-400'
+                                : 'bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50/60'
+                            }`}
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="space-y-1 flex-1 min-w-0">
+                                <div className="flex items-center gap-1.5">
+                                  {isOriginal ? (
+                                    <BarChart3 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                                  ) : (
+                                    <LayoutDashboard className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                                  )}
+                                  <strong className="text-xs font-bold text-slate-800 truncate block">
+                                    {tab.title || '(ไม่มีชื่อแท็บ)'}
+                                  </strong>
+                                </div>
+                                <p className="text-[10.5px] text-slate-500 line-clamp-1">
+                                  {tab.description || 'ไม่มีรายละเอียด'}
+                                </p>
+                                <div className="flex items-center gap-2 pt-1 text-[10px]">
+                                  <span className={`px-2 py-0.5 rounded font-mono font-bold ${
+                                    isOriginal ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800'
+                                  }`}>
+                                    {isOriginal ? 'แดชบอร์ดเดิม' : 'iFrame / Power BI'}
+                                  </span>
+                                  <span className={`px-2 py-0.5 rounded font-bold ${
+                                    tab.enabled ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'
+                                  }`}>
+                                    {tab.enabled ? 'เปิดแสดง' : 'ปิดชั่วคราว'}
+                                  </span>
+                                </div>
+                              </div>
+
+                              {/* Reorder and Delete Actions */}
+                              <div className="flex flex-col items-center gap-1 shrink-0 ml-1" onClick={(e) => e.stopPropagation()}>
+                                <button
+                                  type="button"
+                                  onClick={() => handleMoveTab(idx, 'up')}
+                                  disabled={idx === 0}
+                                  className="p-1 text-slate-400 hover:text-slate-700 disabled:opacity-20 hover:bg-slate-100 rounded"
+                                  title="เลื่อนขึ้น"
+                                >
+                                  <MoveUp className="w-3 h-3" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleMoveTab(idx, 'down')}
+                                  disabled={idx === dashboardTabs.length - 1}
+                                  className="p-1 text-slate-400 hover:text-slate-700 disabled:opacity-20 hover:bg-slate-100 rounded"
+                                  title="เลื่อนลง"
+                                >
+                                  <MoveDown className="w-3 h-3" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteTab(tab.id)}
+                                  className="p-1 text-red-400 hover:text-red-700 hover:bg-red-50 rounded"
+                                  title="ลบแท็บนี้"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleAddTab}
+                      className="w-full py-2.5 px-4 rounded-xl border border-dashed border-slate-300 hover:border-emerald-500 hover:bg-emerald-50/40 text-slate-600 hover:text-emerald-700 font-bold text-xs flex items-center justify-center gap-2 transition cursor-pointer"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>เพิ่มแท็บแดชบอร์ดใหม่</span>
                     </button>
                   </div>
 
-                </div>
+                  {/* Right Column: Active Tab Editor (8 cols) */}
+                  <div className="lg:col-span-8 p-6 bg-slate-50 border border-slate-200/90 rounded-3xl space-y-5 shadow-xs">
+                    
+                    {/* Active Tab Top Banner */}
+                    <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-200">
+                      <div>
+                        <span className="text-[10px] text-slate-400 font-mono block">กำลังแก้ไขแท็บ</span>
+                        <h5 className="text-sm font-black text-slate-800">
+                          {currentTab.title || 'แท็บที่เลือก'}
+                        </h5>
+                      </div>
 
-                {/* 2. Live Preview Card */}
-                <div className="p-6 bg-white border border-slate-200 rounded-3xl space-y-4 shadow-xs">
-                  <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-slate-100">
-                    <div className="flex items-center gap-2">
-                      <Eye className="w-4 h-4 text-blue-600" />
-                      <h5 className="text-xs font-bold text-slate-800">พรีวิวการแสดงผล &lt;iframe&gt; แบบสด (Live Preview)</h5>
+                      {/* Enable / Disable switch for this tab */}
+                      <label className="relative inline-flex items-center cursor-pointer select-none">
+                        <input 
+                          type="checkbox" 
+                          checked={currentTab.enabled !== false}
+                          onChange={() => handleToggleTabEnabled(currentTab.id)}
+                          className="sr-only peer"
+                        />
+                        <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+                        <span className="ml-2.5 text-xs font-bold text-slate-700">
+                          {currentTab.enabled !== false ? 'เปิดใช้งานแท็บนี้' : 'ปิดการแสดงผล'}
+                        </span>
+                      </label>
                     </div>
-                    {parsedPreview.url ? (
-                      <span className="text-[10px] font-mono font-bold px-2.5 py-1 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg truncate max-w-md">
-                        URL: {parsedPreview.url}
-                      </span>
-                    ) : (
-                      <span className="text-[10px] text-slate-400 font-mono">
-                        ยังไม่ได้กรอก URL / โค้ด iframe
-                      </span>
-                    )}
-                  </div>
 
-                  {parsedPreview.url ? (
-                    <div className="relative w-full h-[450px] bg-slate-900 rounded-2xl border border-slate-200 overflow-hidden shadow-inner">
-                      <iframe 
-                        src={parsedPreview.url}
-                        title="Live Preview"
-                        className="w-full h-full border-0 bg-white"
-                        allowFullScreen={true}
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    {/* Field 1: Tab Title */}
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                        <span>ชื่อแท็บ (Tab Title)</span>
+                        <span className="text-red-500">*</span>
+                      </label>
+                      <input 
+                        type="text"
+                        value={currentTab.title || ''}
+                        onChange={(e) => handleUpdateActiveTabField('title', e.target.value)}
+                        placeholder="เช่น: Power BI ภาพรวมสถิติ, แดชบอร์ดติดตามคาร์บอน"
+                        className="w-full p-2.5 text-xs border rounded-xl border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
                       />
                     </div>
-                  ) : (
-                    <div className="p-12 text-center border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50 space-y-2">
-                      <LayoutDashboard className="w-8 h-8 text-slate-300 mx-auto" />
-                      <p className="text-xs font-bold text-slate-600">ยังไม่มีข้อมูล &lt;iframe&gt; ในขณะนี้</p>
-                      <p className="text-[11px] text-slate-400">
-                        เมื่อวางโค้ด &lt;iframe&gt; หรือ URL ในช่องด้านบน ตัวอย่างรายงานจะปรากฏในช่องนี้ทันที
-                      </p>
+
+                    {/* Field 2: Tab Description */}
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-slate-700">รายละเอียดคำอธิบาย (Tab Description)</label>
+                      <textarea
+                        rows={2}
+                        value={currentTab.description || ''}
+                        onChange={(e) => handleUpdateActiveTabField('description', e.target.value)}
+                        placeholder="คำอธิบายสั้นๆ เกี่ยวกับแหล่งข้อมูลหรือวัตถุประสงค์ของแดชบอร์ดในแท็บนี้"
+                        className="w-full p-2.5 text-xs border rounded-xl border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+                      />
                     </div>
-                  )}
+
+                    {/* Field 3: Tab Type Selection */}
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-slate-700">ประเภทของแดชบอร์ดในแท็บนี้</label>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <button
+                          type="button"
+                          onClick={() => handleUpdateActiveTabField('type', 'iframe')}
+                          className={`p-3 rounded-2xl border text-left transition flex items-center gap-3 cursor-pointer ${
+                            currentTab.type === 'iframe'
+                              ? 'bg-blue-50 border-blue-400 ring-2 ring-blue-300 text-blue-900'
+                              : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                          }`}
+                        >
+                          <LayoutDashboard className="w-5 h-5 text-blue-600 shrink-0" />
+                          <div>
+                            <strong className="text-xs block">Power BI / &lt;iframe&gt; Embed</strong>
+                            <span className="text-[10px] text-slate-500">ฝังโค้ด iframe หรือ URL ของ Power BI</span>
+                          </div>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleUpdateActiveTabField('type', 'original')}
+                          className={`p-3 rounded-2xl border text-left transition flex items-center gap-3 cursor-pointer ${
+                            currentTab.type === 'original'
+                              ? 'bg-emerald-50 border-emerald-400 ring-2 ring-emerald-300 text-emerald-900'
+                              : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                          }`}
+                        >
+                          <BarChart3 className="w-5 h-5 text-emerald-600 shrink-0" />
+                          <div>
+                            <strong className="text-xs block">แดชบอร์ดภาพรวมเดิมของระบบ</strong>
+                            <span className="text-[10px] text-slate-500">แสดงผลกราฟสถิติคาร์บอน 6 มิติเดิม</span>
+                          </div>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Field 4: If type is iframe, show Embed Code Input & Height & Preview */}
+                    {currentTab.type === 'iframe' && (
+                      <div className="space-y-4 pt-2 border-t border-slate-200">
+                        {/* Textarea for iframe */}
+                        <div className="space-y-1.5">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                              <Code className="w-4 h-4 text-emerald-600" />
+                              <span>โค้ด &lt;iframe&gt; หรือ ลิงก์ URL ของ Power BI Dashboard</span>
+                              <span className="text-red-500">*</span>
+                            </label>
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => handleUpdateActiveTabField('iframe', DEMO_POWERBI_IFRAME)}
+                                className="px-2 py-1 text-[11px] font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition flex items-center gap-1 shadow-2xs"
+                              >
+                                <Sparkles className="w-3.5 h-3.5" />
+                                <span>ใส่ตัวอย่าง Demo</span>
+                              </button>
+                              {currentTab.iframe && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleUpdateActiveTabField('iframe', '')}
+                                  className="px-2 py-1 text-[11px] font-bold text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg transition shadow-2xs"
+                                >
+                                  ล้างข้อมูล
+                                </button>
+                              )}
+                            </div>
+                          </div>
+
+                          <textarea
+                            rows={4}
+                            value={currentTab.iframe || ''}
+                            onChange={(e) => handleUpdateActiveTabField('iframe', e.target.value)}
+                            placeholder='<iframe title="Report" width="100%" height="800" src="https://app.powerbi.com/view?r=..." frameborder="0" allowFullScreen="true"></iframe> หรือวางเฉพาะ URL https://app.powerbi.com/view?r=...'
+                            className="w-full p-3 font-mono text-xs border rounded-xl border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+                          />
+                        </div>
+
+                        {/* Height selector */}
+                        <div className="space-y-1">
+                          <label className="text-xs font-bold text-slate-700">ความสูงของกรอบแดชบอร์ด (Height)</label>
+                          <select
+                            value={currentTab.height || '850px'}
+                            onChange={(e) => handleUpdateActiveTabField('height', e.target.value)}
+                            className="w-full p-2.5 text-xs border rounded-xl border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white cursor-pointer"
+                          >
+                            <option value="750px">750px (ขนาดกะทัดรัด)</option>
+                            <option value="850px">850px (มาตรฐาน แนะนำ)</option>
+                            <option value="950px">950px (ขยายใหญ่)</option>
+                            <option value="1050px">1050px (รายงานขนาดยาว)</option>
+                            <option value="calc(100vh - 160px)">calc(100vh - 160px) (พอดีจอ Responsive)</option>
+                          </select>
+                        </div>
+
+                        {/* Live Preview for this active tab */}
+                        <div className="p-4 bg-white border border-slate-200 rounded-2xl space-y-3">
+                          <div className="flex items-center justify-between text-xs font-bold text-slate-700 pb-2 border-b border-slate-100">
+                            <span className="flex items-center gap-1.5">
+                              <Eye className="w-4 h-4 text-blue-600" />
+                              <span>พรีวิวตัวอย่างสำหรับแท็บนี้</span>
+                            </span>
+                            {parsedPreview.url ? (
+                              <span className="text-[10px] font-mono text-blue-600 truncate max-w-xs">
+                                {parsedPreview.url}
+                              </span>
+                            ) : (
+                              <span className="text-[10px] text-slate-400 font-mono">ยังไม่มี URL</span>
+                            )}
+                          </div>
+
+                          {parsedPreview.url ? (
+                            <div className="w-full h-80 bg-slate-900 rounded-xl overflow-hidden border border-slate-200">
+                              <iframe
+                                src={parsedPreview.url}
+                                title={currentTab.title}
+                                className="w-full h-full border-0 bg-white"
+                                allowFullScreen={true}
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+                              />
+                            </div>
+                          ) : (
+                            <div className="p-6 text-center text-slate-400 text-xs border border-dashed border-slate-200 rounded-xl">
+                              กรอกโค้ด <code>&lt;iframe&gt;</code> หรือ URL ด้านบนเพื่อพรีวิวตัวอย่าง
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Notice if original */}
+                    {currentTab.type === 'original' && (
+                      <div className="p-4 bg-emerald-50/80 border border-emerald-200 rounded-2xl text-xs text-emerald-800 space-y-1">
+                        <strong className="block font-bold">📊 ข้อมูลแดชบอร์ดระบบเดิม:</strong>
+                        <p className="text-[11px] text-emerald-700">
+                          แท็บนี้จะแสดงผลตัวชี้วัดคาร์บอนสะสม, สถิติแยก 6 มิติหลัก, แนวโน้มรายปี และบันทึกกิจกรรมภาคสนามแบบเรียลไทม์จากระบบสระบุรีแซนด์บ็อกซ์
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Save All Tabs Action Button */}
+                    <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-slate-200">
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={handleSaveAllDashboardTabs}
+                          disabled={isSavingPowerBi}
+                          className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold text-xs rounded-xl flex items-center gap-2 transition shadow-sm cursor-pointer"
+                        >
+                          {isSavingPowerBi ? (
+                            <>
+                              <RefreshCw className="w-4 h-4 animate-spin" />
+                              <span>กำลังบันทึกแท็บทั้งหมด...</span>
+                            </>
+                          ) : powerBiSaved ? (
+                            <>
+                              <Check className="w-4 h-4 text-emerald-200" />
+                              <span>บันทึกแท็บแดชบอร์ดสำเร็จ!</span>
+                            </>
+                          ) : (
+                            <>
+                              <Save className="w-4 h-4" />
+                              <span>บันทึกการตั้งค่าแท็บแดชบอร์ดทั้งหมด</span>
+                            </>
+                          )}
+                        </button>
+
+                        {powerBiSaved && (
+                          <span className="text-xs font-bold text-emerald-600 animate-in fade-in">
+                            บันทึก {dashboardTabs.length} แท็บเรียบร้อยแล้ว
+                          </span>
+                        )}
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => setCurrentPage('dashboard')}
+                        className="px-4 py-2.5 bg-white hover:bg-slate-100 border border-slate-300 text-slate-700 font-bold text-xs rounded-xl flex items-center gap-1.5 transition shadow-2xs cursor-pointer"
+                      >
+                        <Eye className="w-4 h-4 text-emerald-600" />
+                        <span>เปิดดูหน้าแดชบอร์ดจริง (/dashboard)</span>
+                      </button>
+                    </div>
+
+                  </div>
                 </div>
 
                 {/* 3. Power BI REST API Endpoints Card */}

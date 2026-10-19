@@ -861,8 +861,9 @@ app.get('/api/v1/powerbi', async (req, res) => {
   let config = {
     powerbi_iframe: localStore.summaryData?.powerbi_iframe || '',
     powerbi_dashboard_enabled: localStore.summaryData?.powerbi_dashboard_enabled !== false,
-    powerbi_title: localStore.summaryData?.powerbi_title || 'ระบบแดชบอร์ดติดตามคาร์บอน (Decarbonization Dashboard)',
+    powerbi_title: localStore.summaryData?.powerbi_title || 'ระบบแดชบอร์ดติดตามข้อมูล (Decarbonization Dashboard)',
     powerbi_height: localStore.summaryData?.powerbi_height || '850px',
+    dashboard_tabs: localStore.summaryData?.dashboard_tabs || [],
   };
 
   if (isDbConnected) {
@@ -875,6 +876,7 @@ app.get('/api/v1/powerbi', async (req, res) => {
           powerbi_dashboard_enabled: d.powerbi_dashboard_enabled !== undefined ? d.powerbi_dashboard_enabled : config.powerbi_dashboard_enabled,
           powerbi_title: d.powerbi_title || config.powerbi_title,
           powerbi_height: d.powerbi_height || config.powerbi_height,
+          dashboard_tabs: Array.isArray(d.dashboard_tabs) ? d.dashboard_tabs : config.dashboard_tabs,
         };
       }
     } catch (err) {
@@ -886,7 +888,7 @@ app.get('/api/v1/powerbi', async (req, res) => {
 });
 
 app.put('/api/v1/powerbi', async (req, res) => {
-  const { powerbi_iframe, powerbi_dashboard_enabled, powerbi_title, powerbi_height } = req.body;
+  const { powerbi_iframe, powerbi_dashboard_enabled, powerbi_title, powerbi_height, dashboard_tabs } = req.body;
   
   const updatedSummary = {
     ...localStore.summaryData,
@@ -894,6 +896,7 @@ app.put('/api/v1/powerbi', async (req, res) => {
     ...(powerbi_dashboard_enabled !== undefined && { powerbi_dashboard_enabled: Boolean(powerbi_dashboard_enabled) }),
     ...(powerbi_title !== undefined && { powerbi_title: String(powerbi_title || '') }),
     ...(powerbi_height !== undefined && { powerbi_height: String(powerbi_height || '850px') }),
+    ...(dashboard_tabs !== undefined && { dashboard_tabs: Array.isArray(dashboard_tabs) ? dashboard_tabs : [] }),
   };
 
   localStore.summaryData = updatedSummary;
@@ -916,7 +919,8 @@ app.put('/api/v1/powerbi', async (req, res) => {
     powerbi_iframe: updatedSummary.powerbi_iframe,
     powerbi_dashboard_enabled: updatedSummary.powerbi_dashboard_enabled,
     powerbi_title: updatedSummary.powerbi_title,
-    powerbi_height: updatedSummary.powerbi_height
+    powerbi_height: updatedSummary.powerbi_height,
+    dashboard_tabs: updatedSummary.dashboard_tabs
   });
 });
 

@@ -1,8 +1,74 @@
 /**
- * Utilities for Power BI & Interactive Dashboard Embed and iFrame parsing
+ * Utilities for Power BI & Interactive Dashboard Multi-Tab Embed and iFrame parsing
  */
 
 export const DEMO_POWERBI_IFRAME = `<iframe title="Decarbonization Dashboard" width="100%" height="800" src="https://playground.powerbi.com/sampleReportEmbed" frameborder="0" allowFullScreen="true"></iframe>`;
+
+export const DEFAULT_DASHBOARD_TABS = [
+  {
+    id: 'tab-carbon-overview',
+    title: 'ภาพรวมการลดก๊าซเรือนกระจก',
+    description: 'ระบบติดตามคาร์บอนและสถิติการลดก๊าซเรือนกระจกรายมิติและพื้นที่จังหวัดสระบุรี (Saraburi Sandbox)',
+    type: 'original', // 'original' = built-in dashboard charts, 'iframe' = Power BI or external embed
+    iframe: '',
+    height: '850px',
+    enabled: true
+  },
+  {
+    id: 'tab-powerbi-report',
+    title: 'Power BI แดชบอร์ดวิเคราะห์',
+    description: 'รายงานวิเคราะห์เชิงลึกเชื่อมโยงสดผ่าน Microsoft Power BI Interactive Dashboard',
+    type: 'iframe',
+    iframe: '',
+    height: '850px',
+    enabled: true
+  }
+];
+
+/**
+ * Normalizes dashboard tabs from summaryData or provides defaults
+ */
+export function normalizeDashboardTabs(rawTabs, summaryData = {}) {
+  let tabs = [];
+  if (Array.isArray(rawTabs) && rawTabs.length > 0) {
+    tabs = rawTabs;
+  } else if (summaryData?.dashboard_tabs && Array.isArray(summaryData.dashboard_tabs) && summaryData.dashboard_tabs.length > 0) {
+    tabs = summaryData.dashboard_tabs;
+  } else if (summaryData?.powerbi_iframe) {
+    tabs = [
+      {
+        id: 'tab-powerbi-main',
+        title: summaryData.powerbi_title || 'Power BI แดชบอร์ดติดตามคาร์บอน',
+        description: 'รายงานและวิเคราะห์ข้อมูลก๊าซเรือนกระจกผ่าน Microsoft Power BI Interactive Dashboard',
+        type: 'iframe',
+        iframe: summaryData.powerbi_iframe,
+        height: summaryData.powerbi_height || '850px',
+        enabled: summaryData.powerbi_dashboard_enabled !== false
+      },
+      {
+        id: 'tab-carbon-legacy',
+        title: 'แดชบอร์ดระบบเดิม',
+        description: 'สถิติการประหยัดก๊าซเรือนกระจกสะสมเชิงพื้นที่ 6 มิติหลักและกิจกรรมภาคสนาม',
+        type: 'original',
+        iframe: '',
+        height: '850px',
+        enabled: true
+      }
+    ];
+  } else {
+    tabs = DEFAULT_DASHBOARD_TABS;
+  }
+
+  return tabs.map((tab, idx) => ({
+    id: tab.id || `tab-${Date.now()}-${idx}`,
+    title: tab.title || `แดชบอร์ดที่ ${idx + 1}`,
+    description: tab.description || '',
+    type: tab.type || (tab.iframe ? 'iframe' : 'original'),
+    iframe: tab.iframe || '',
+    height: tab.height || '850px',
+    enabled: tab.enabled !== false
+  }));
+}
 
 /**
  * Parses user input which can be:
