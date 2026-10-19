@@ -2477,7 +2477,7 @@ export default function Admin({
                     }`}
                   >
                     <Heart className="w-4 h-4 text-pink-600" />
-                    <span>คุณภาพชีวิตดี คนสระบุรีไม่ทอดทิ้งกัน (6 การ์ด)</span>
+                    <span>คุณภาพชีวิตดี คนสระบุรีไม่ทอดทิ้งกัน ({qualityOfLifeCards.length} การ์ด)</span>
                   </button>
                 </div>
 
@@ -2657,8 +2657,14 @@ export default function Admin({
                                 </span>
                               </div>
                               <div className="w-full bg-white/15 text-white font-bold py-1.5 px-3 rounded-lg border border-white/20 flex items-center justify-between text-[11px] backdrop-blur-xs">
-                                <span className="mx-auto">ดูรายละเอียด</span>
-                                <ChevronRight className="w-3.5 h-3.5 text-white" />
+                                <span className="mx-auto truncate px-1">
+                                  {currentCard.button_text || (activeCardSection === 'dimensions' ? 'ดูโครงการที่เกี่ยวข้อง' : 'เข้าสู่ระบบติดตามดูแลกลุ่มเปราะบาง (spho.moph.go.th)')}
+                                </span>
+                                {currentCard.link_url || activeCardSection === 'quality_of_life' ? (
+                                  <ExternalLink className="w-3.5 h-3.5 text-white shrink-0" />
+                                ) : (
+                                  <ChevronRight className="w-3.5 h-3.5 text-white shrink-0" />
+                                )}
                               </div>
                             </div>
                           </div>
@@ -2894,7 +2900,7 @@ export default function Admin({
                                 value={currentCard.kpi_value || ''}
                                 onChange={(e) => handleCardFieldChange('kpi_value', e.target.value)}
                                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-400 font-mono font-bold"
-                                placeholder="เช่น 1,250K ตัน/ปี หรือ 80,000+ ราย"
+                                placeholder="เช่น 1,250K ตัน/ปี หรือ 13 อำเภอทั่วจังหวัดสระบุรี"
                               />
                             </div>
                             <div className="space-y-1">
@@ -2904,8 +2910,42 @@ export default function Admin({
                                 value={currentCard.kpi_label || ''}
                                 onChange={(e) => handleCardFieldChange('kpi_label', e.target.value)}
                                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-400"
-                                placeholder="เช่น ลด CO₂e หรือ ประชาชนได้รับบริการ"
+                                placeholder="เช่น ลด CO₂e หรือ พื้นที่ดูแลครอบคลุม"
                               />
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3 border-t border-slate-100">
+                            <div className="space-y-1">
+                              <label className="text-[11px] font-bold text-slate-600 block flex items-center gap-1">
+                                <ExternalLink className="w-3.5 h-3.5 text-emerald-600" />
+                                <span>ลิงก์ URL ปลายทางเมื่อคลิก (Link URL)</span>
+                              </label>
+                              <input
+                                type="text"
+                                value={currentCard.link_url || ''}
+                                onChange={(e) => handleCardFieldChange('link_url', e.target.value)}
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-400 font-mono"
+                                placeholder={activeCardSection === 'quality_of_life' ? "https://spho.moph.go.th/vulnerable/follow" : "เว้นว่างเพื่อไปหน้ามิติโครงการ"}
+                              />
+                              <p className="text-[10px] text-slate-400">
+                                {activeCardSection === 'quality_of_life' 
+                                  ? 'ระบบจะเปิดแท็บใหม่ไปยังเว็บไซต์นี้เมื่อคลิก' 
+                                  : 'เว้นว่างไว้เพื่อเปิดหน้ารายละเอียด 6 มิติหลักตามปกติ'}
+                              </p>
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-[11px] font-bold text-slate-600 block">ข้อความบนปุ่ม (Button Text)</label>
+                              <input
+                                type="text"
+                                value={currentCard.button_text || ''}
+                                onChange={(e) => handleCardFieldChange('button_text', e.target.value)}
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                                placeholder={activeCardSection === 'quality_of_life' ? "เข้าสู่ระบบติดตามดูแลกลุ่มเปราะบาง (spho.moph.go.th)" : "ดูรายละเอียด"}
+                              />
+                              <p className="text-[10px] text-slate-400">
+                                ข้อความที่แสดงบนปุ่มด้านล่างของการ์ด
+                              </p>
                             </div>
                           </div>
                         </div>

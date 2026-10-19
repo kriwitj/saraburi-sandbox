@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { 
   Eye, CheckCircle2, Leaf, Building2, Users, Trash2, MapPin, ChevronDown, ChevronRight,
   Folder, Layers, Flame, Sprout, Trees, Truck, Search, Plus, Minus, Compass, HelpCircle, ArrowUp,
-  Heart, Sparkles, ShieldCheck, GraduationCap, Utensils
+  Heart, Sparkles, ShieldCheck, GraduationCap, Utensils, ExternalLink
 } from 'lucide-react';
 import { 
   normalizeDimensionCards, 
@@ -1027,18 +1027,23 @@ export default function Home({
           </p>
         </div>
 
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className={qualityOfLifeCards.length === 1 ? "max-w-4xl mx-auto" : "grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3"}>
           {qualityOfLifeCards.map((card, idx) => {
             const cardBgStyle = buildGradientStyle(card);
-            const numColor = card.accent_color || card.start_color || '#f43f5e';
+            const numColor = card.accent_color || card.start_color || '#fb7185';
+            const isSingle = qualityOfLifeCards.length === 1;
+            const targetUrl = card.link_url || 'https://spho.moph.go.th/vulnerable/follow';
+            const buttonText = card.button_text || 'เข้าสู่ระบบติดตามดูแลกลุ่มเปราะบาง (spho.moph.go.th)';
 
             return (
               <div 
                 key={card.id || idx}
-                className="relative rounded-2xl overflow-hidden min-h-[250px] flex flex-col justify-between p-4 border group hover:scale-[1.02] transition duration-300 shadow-sm hover:shadow-md border-slate-200"
+                className={`relative rounded-3xl overflow-hidden flex flex-col justify-between border group hover:shadow-2xl transition duration-300 shadow-lg border-slate-200/80 ${
+                  isSingle ? 'min-h-[280px] sm:min-h-[320px] p-6 sm:p-8' : 'min-h-[250px] p-4'
+                }`}
               >
                 <div 
-                  className="absolute inset-0 z-0 transition duration-500 bg-center bg-cover group-hover:scale-105" 
+                  className="absolute inset-0 z-0 transition duration-700 bg-center bg-cover group-hover:scale-105" 
                   style={{ backgroundImage: `url('${card.image_url}')` }}
                 />
                 <div 
@@ -1046,52 +1051,65 @@ export default function Home({
                   style={cardBgStyle}
                 />
 
-                <div className="relative z-20 w-full flex flex-col justify-between h-full min-h-[210px]">
-                  <div className="space-y-2">
+                <div className="relative z-20 w-full flex flex-col justify-between h-full space-y-6">
+                  <div className="space-y-3">
                     <div className="flex items-start justify-between">
                       <span 
-                        className="text-2xl font-black font-mono tracking-wider drop-shadow-sm"
+                        className={`font-black font-mono tracking-wider drop-shadow-sm ${isSingle ? 'text-3xl sm:text-4xl' : 'text-2xl'}`}
                         style={{ color: numColor }}
                       >
                         0{card.id || (idx + 1)}
                       </span>
-                      <span className="text-[9px] text-white/90 font-mono font-bold tracking-widest bg-black/35 px-2 py-0.5 rounded-full border border-white/15">
+                      <span className="text-[10px] sm:text-xs text-white/90 font-mono font-bold tracking-widest bg-black/40 px-3 py-1 rounded-full border border-white/20 backdrop-blur-xs">
                         {card.tag || 'QUALITY OF LIFE'}
                       </span>
                     </div>
-                    <h4 className="text-sm font-bold leading-snug text-white lg:text-base line-clamp-2 drop-shadow">
-                      {card.title}
-                    </h4>
-                    {card.subtitle && (
-                      <p className="text-[11px] text-white/80 leading-relaxed line-clamp-2">
-                        {card.subtitle}
-                      </p>
-                    )}
+
+                    <div className="space-y-1.5">
+                      <h4 className={`font-black leading-snug text-white drop-shadow ${isSingle ? 'text-xl sm:text-2xl md:text-3xl' : 'text-sm lg:text-base line-clamp-2'}`}>
+                        {card.title}
+                      </h4>
+                      {card.subtitle && (
+                        <p className={`font-medium tracking-wide ${isSingle ? 'text-xs sm:text-sm text-pink-200 font-mono' : 'text-[11px] text-white/80 line-clamp-2'}`}>
+                          {card.subtitle}
+                        </p>
+                      )}
+                      {card.description && (
+                        <p className={`text-white/90 leading-relaxed max-w-3xl pt-1 ${isSingle ? 'text-xs sm:text-sm' : 'text-[11px] line-clamp-2'}`}>
+                          {card.description}
+                        </p>
+                      )}
+                    </div>
                   </div>
 
-                  <div className="space-y-3 pt-3 border-t border-white/15">
-                    <div className="flex items-end justify-between text-white">
+                  <div className={`pt-4 border-t border-white/20 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 ${isSingle ? '' : 'sm:flex-col items-start'}`}>
+                    <div className="flex items-center gap-3 text-white">
                       <div>
-                        <span className="text-[9px] text-white/70 block font-sans">
-                          {card.kpi_label || 'เป้าหมาย/ผลสัมฤทธิ์'}
+                        <span className="text-[10px] sm:text-xs text-white/70 block font-sans">
+                          {card.kpi_label || 'พื้นที่ดูแลครอบคลุม'}
                         </span>
-                        <span className="font-mono text-base font-bold leading-tight text-white drop-shadow">
+                        <span className={`font-mono font-bold leading-tight text-white drop-shadow ${isSingle ? 'text-lg sm:text-xl' : 'text-base'}`}>
                           {card.kpi_value}
                         </span>
                       </div>
-                      <span className="text-[10px] text-pink-300 bg-black/30 px-2 py-0.5 rounded-full border border-white/10 font-medium">
-                        ชุมชนมีส่วนร่วม
+                      <span className="text-[10px] sm:text-xs text-rose-200 bg-rose-950/60 px-3 py-1 rounded-full border border-rose-400/30 font-medium whitespace-nowrap">
+                        คนสระบุรีไม่ทอดทิ้งกัน
                       </span>
                     </div>
-                    <button 
-                      onClick={() => {
-                        setCurrentPage('projects');
-                      }}
-                      className="w-full bg-white/15 hover:bg-white/25 active:scale-[0.99] text-white font-bold py-1.5 px-3 rounded-lg border border-white/20 flex items-center justify-between text-[11px] transition duration-200 backdrop-blur-sm"
+
+                    <a 
+                      href={targetUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={`inline-flex items-center justify-center gap-2 font-bold rounded-xl border border-white/30 shadow-md hover:shadow-xl transition-all duration-200 active:scale-[0.98] ${
+                        isSingle 
+                          ? 'bg-rose-600 hover:bg-rose-500 text-white text-xs sm:text-sm py-3 px-6' 
+                          : 'w-full bg-white/15 hover:bg-white/25 text-white text-[11px] py-1.5 px-3'
+                      }`}
                     >
-                      <span className="mx-auto">ดูโครงการที่เกี่ยวข้อง</span>
-                      <ChevronRight className="w-3.5 h-3.5 text-white" />
-                    </button>
+                      <span>{buttonText}</span>
+                      <ExternalLink className="w-4 h-4 shrink-0 text-white" />
+                    </a>
                   </div>
                 </div>
               </div>

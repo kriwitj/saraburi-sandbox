@@ -181,99 +181,25 @@ export const DEFAULT_DIMENSION_CARDS = [
 export const DEFAULT_QUALITY_OF_LIFE_CARDS = [
   {
     id: 1,
-    title: 'การดูแลกลุ่มเปราะบางและผู้สูงวัย',
-    subtitle: 'LIVELIHOOD 01',
-    description: 'พัฒนาระบบสวัสดิการชุมชน กองทุนฟื้นฟูสมรรถภาพ และการดูแลผู้สูงอายุติดบ้าน/ติดเตียงครอบคลุมทุกพื้นที่',
-    image_url: 'https://images.unsplash.com/photo-1576765608535-5f04d1e3f289?auto=format&fit=crop&w=800&q=80',
+    title: 'ระบบติดตามดูแลกลุ่มเปราะบาง คนสระบุรีไม่ทอดทิ้งกัน',
+    subtitle: 'SARABURI CARES & VULNERABLE CARE',
+    description: 'ระบบติดตามและดูแลผู้มีภาวะพึ่งพิงและกลุ่มเปราะบางเชิงรุก จังหวัดสระบุรี เพื่อการเข้าถึงสวัสดิการและการดูแลสุขภาวะอย่างทั่วถึงและเท่าเทียม',
+    image_url: 'https://images.unsplash.com/photo-1576765608535-5f04d1e3f289?auto=format&fit=crop&w=1200&q=80',
+    start_color: '#4c0519',
+    via_color: '#881337',
+    end_color: '#1c1917',
     gradient_start: '#4c0519',
     gradient_via: '#881337',
     gradient_end: '#1c1917',
     gradient_direction: 'to-b',
+    opacity: 0.88,
     overlay_opacity: 0.88,
+    accent_color: '#fb7185',
     num_color: '#fb7185',
-    kpi_label: 'พื้นที่ดูแล',
-    kpi_value: '13 อำเภอทั่วจังหวัด',
-    button_text: 'อ่านรายละเอียด'
-  },
-  {
-    id: 2,
-    title: 'สุขภาวะและสาธารณสุขชุมชนเข้มแข็ง',
-    subtitle: 'LIVELIHOOD 02',
-    description: 'ยกระดับบริการสุขภาพปฐมภูมิ เครือข่าย อสม. เชิงรุก และการเฝ้าระวังมลพิษทางอากาศเพื่อสุขภาพปอดที่ดี',
-    image_url: 'https://images.unsplash.com/photo-1584515979956-d9f6e5d09982?auto=format&fit=crop&w=800&q=80',
-    gradient_start: '#022c22',
-    gradient_via: '#065f46',
-    gradient_end: '#064e3b',
-    gradient_direction: 'to-b',
-    overlay_opacity: 0.88,
-    num_color: '#34d399',
-    kpi_label: 'เครือข่ายบริการ',
-    kpi_value: '100% ตำบล',
-    button_text: 'อ่านรายละเอียด'
-  },
-  {
-    id: 3,
-    title: 'การศึกษา ทักษะสีเขียว และสร้างอาชีพยุคใหม่',
-    subtitle: 'LIVELIHOOD 03',
-    description: 'ส่งเสริมการเรียนรู้ตลอดชีวิต พัฒนาทักษะแรงงานสีเขียว (Green Jobs) และสร้างโอกาสให้เยาวชนคนรุ่นใหม่',
-    image_url: 'https://images.unsplash.com/photo-1524178232363-1fb2b075b655?auto=format&fit=crop&w=800&q=80',
-    gradient_start: '#0f172a',
-    gradient_via: '#1e3a8a',
-    gradient_end: '#172554',
-    gradient_direction: 'to-b',
-    overlay_opacity: 0.88,
-    num_color: '#60a5fa',
-    kpi_label: 'พัฒนาทักษะ',
-    kpi_value: '5,000+ ราย',
-    button_text: 'อ่านรายละเอียด'
-  },
-  {
-    id: 4,
-    title: 'ความปลอดภัยในชีวิตและสังคมน่าอยู่',
-    subtitle: 'LIVELIHOOD 04',
-    description: 'สร้างชุมชนปลอดภัย ป้องกันปัญหายาเสพติด พร้อมระบบเตือนภัยและบรรเทาสาธารณภัยเพื่อความมั่นใจของชุมชน',
-    image_url: 'https://images.unsplash.com/photo-1464746133101-a2c3f88e0dd9?auto=format&fit=crop&w=800&q=80',
-    gradient_start: '#451a03',
-    gradient_via: '#78350f',
-    gradient_end: '#1c1917',
-    gradient_direction: 'to-b',
-    overlay_opacity: 0.88,
-    num_color: '#fbbf24',
-    kpi_label: 'ระบบเฝ้าระวัง',
-    kpi_value: '24 ชั่วโมง',
-    button_text: 'อ่านรายละเอียด'
-  },
-  {
-    id: 5,
-    title: 'ความมั่นคงทางอาหารและเศรษฐกิจรากหญ้า',
-    subtitle: 'LIVELIHOOD 05',
-    description: 'สระบุรีแซนด์บ็อกซ์กินได้ ส่งเสริมผลผลิตเกษตรปลอดภัย ตลาดสีเขียว และวิสาหกิจชุมชนสร้างรายได้หมุนเวียน',
-    image_url: 'https://images.unsplash.com/photo-1610397613000-f0d2db56324b?auto=format&fit=crop&w=800&q=80',
-    gradient_start: '#2e1065',
-    gradient_via: '#581c87',
-    gradient_end: '#1e1b4b',
-    gradient_direction: 'to-b',
-    overlay_opacity: 0.88,
-    num_color: '#c084fc',
-    kpi_label: 'ชุมชนกินได้',
-    kpi_value: '45 วิสาหกิจ',
-    button_text: 'อ่านรายละเอียด'
-  },
-  {
-    id: 6,
-    title: 'เมืองน่าอยู่และการเข้าถึงสิทธิอย่างเท่าเทียม',
-    subtitle: 'LIVELIHOOD 06',
-    description: 'พัฒนาสิ่งอำนวยความสะดวกสำหรับทุกคน (Universal Design) ปรับปรุงพื้นที่สาธารณะ และการมีส่วนร่วมของประชาชน',
-    image_url: 'https://images.unsplash.com/photo-1519999482648-25049ddd37b1?auto=format&fit=crop&w=800&q=80',
-    gradient_start: '#083344',
-    gradient_via: '#0e7490',
-    gradient_end: '#0f172a',
-    gradient_direction: 'to-b',
-    overlay_opacity: 0.88,
-    num_color: '#38bdf8',
-    kpi_label: 'การเข้าถึง',
-    kpi_value: 'เพื่อทุกคน (100%)',
-    button_text: 'อ่านรายละเอียด'
+    kpi_label: 'พื้นที่ดูแลครอบคลุม',
+    kpi_value: '13 อำเภอทั่วจังหวัดสระบุรี',
+    link_url: 'https://spho.moph.go.th/vulnerable/follow',
+    button_text: 'เข้าสู่ระบบติดตามดูแลกลุ่มเปราะบาง (spho.moph.go.th)'
   }
 ];
 
@@ -281,11 +207,26 @@ export function normalizeDimensionCards(rawCards) {
   if (Array.isArray(rawCards) && rawCards.length > 0) {
     return rawCards.map((c, i) => {
       const fallback = DEFAULT_DIMENSION_CARDS[i] || DEFAULT_DIMENSION_CARDS[0];
+      const start = c.start_color || c.gradient_start || fallback.gradient_start;
+      const via = c.via_color || c.gradient_via || fallback.gradient_via;
+      const end = c.end_color || c.gradient_end || fallback.gradient_end;
+      const opacity = typeof c.opacity === 'number' ? c.opacity : (typeof c.overlay_opacity === 'number' ? c.overlay_opacity : 0.90);
+      const accent = c.accent_color || c.num_color || fallback.num_color;
+
       return {
         ...fallback,
         ...c,
         id: c.id || i + 1,
-        overlay_opacity: typeof c.overlay_opacity === 'number' ? c.overlay_opacity : 0.90
+        start_color: start,
+        gradient_start: start,
+        via_color: via,
+        gradient_via: via,
+        end_color: end,
+        gradient_end: end,
+        opacity: opacity,
+        overlay_opacity: opacity,
+        accent_color: accent,
+        num_color: accent
       };
     });
   }
@@ -296,11 +237,28 @@ export function normalizeQualityOfLifeCards(rawCards) {
   if (Array.isArray(rawCards) && rawCards.length > 0) {
     return rawCards.map((c, i) => {
       const fallback = DEFAULT_QUALITY_OF_LIFE_CARDS[i] || DEFAULT_QUALITY_OF_LIFE_CARDS[0];
+      const start = c.start_color || c.gradient_start || fallback.start_color;
+      const via = c.via_color || c.gradient_via || fallback.via_color;
+      const end = c.end_color || c.gradient_end || fallback.end_color;
+      const opacity = typeof c.opacity === 'number' ? c.opacity : (typeof c.overlay_opacity === 'number' ? c.overlay_opacity : fallback.opacity);
+      const accent = c.accent_color || c.num_color || fallback.accent_color;
+
       return {
         ...fallback,
         ...c,
         id: c.id || i + 1,
-        overlay_opacity: typeof c.overlay_opacity === 'number' ? c.overlay_opacity : 0.88
+        start_color: start,
+        gradient_start: start,
+        via_color: via,
+        gradient_via: via,
+        end_color: end,
+        gradient_end: end,
+        opacity: opacity,
+        overlay_opacity: opacity,
+        accent_color: accent,
+        num_color: accent,
+        link_url: c.link_url || 'https://spho.moph.go.th/vulnerable/follow',
+        button_text: c.button_text || 'เข้าสู่ระบบติดตามดูแลกลุ่มเปราะบาง (spho.moph.go.th)'
       };
     });
   }
@@ -311,6 +269,7 @@ export function normalizeQualityOfLifeCards(rawCards) {
  * Returns an inline style object for linear-gradient with opacity
  */
 export function buildGradientStyle(card) {
+  if (!card) return {};
   const direction = card.gradient_direction || 'to-b';
   let angle = 'to bottom';
   if (direction === 'to-t') angle = 'to top';
@@ -318,10 +277,12 @@ export function buildGradientStyle(card) {
   if (direction === 'to-l') angle = 'to left';
   if (direction === 'to-br') angle = 'to bottom right';
 
-  const start = card.gradient_start || '#022c22';
-  const via = card.gradient_via || '#064e3b';
-  const end = card.gradient_end || '#022c22';
-  const opacity = typeof card.overlay_opacity === 'number' ? card.overlay_opacity : 0.90;
+  const start = card.start_color || card.gradient_start || '#022c22';
+  const via = card.via_color || card.gradient_via || '#064e3b';
+  const end = card.end_color || card.gradient_end || '#022c22';
+  const opacity = typeof card.opacity === 'number' 
+    ? card.opacity 
+    : (typeof card.overlay_opacity === 'number' ? card.overlay_opacity : 0.90);
 
   return {
     background: `linear-gradient(${angle}, ${hexToRgba(start, opacity)}, ${hexToRgba(via, opacity * 0.7)}, ${hexToRgba(end, opacity)})`
