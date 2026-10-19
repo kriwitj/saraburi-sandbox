@@ -1,8 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   Eye, CheckCircle2, Leaf, Building2, Users, Trash2, MapPin, ChevronDown, ChevronRight,
-  Folder, Layers, Flame, Sprout, Trees, Truck, Search, Plus, Minus, Compass, HelpCircle, ArrowUp
+  Folder, Layers, Flame, Sprout, Trees, Truck, Search, Plus, Minus, Compass, HelpCircle, ArrowUp,
+  Heart, Sparkles, ShieldCheck, GraduationCap, Utensils
 } from 'lucide-react';
+import { 
+  normalizeDimensionCards, 
+  normalizeQualityOfLifeCards, 
+  buildGradientStyle 
+} from '../utils/cardConfigs';
 
 const PARTNERS = [
   { name: "WORLD ECONOMIC FORUM", subtitle: "Transitioning Industrial Clusters", logoText: "WEF", color: "text-blue-600 bg-blue-50 border border-blue-100" },
@@ -69,6 +75,15 @@ export default function Home({
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStation, setSelectedStation] = useState(null);
   const [activePillarFilter, setActivePillarFilter] = useState(null); // null means all
+
+  // Dynamic 6 Dimensions and Quality of Life cards from backend / summaryData
+  const dimensionCards = useMemo(() => {
+    return normalizeDimensionCards(summaryData?.dimension_cards);
+  }, [summaryData?.dimension_cards]);
+
+  const qualityOfLifeCards = useMemo(() => {
+    return normalizeQualityOfLifeCards(summaryData?.quality_of_life_cards);
+  }, [summaryData?.quality_of_life_cards]);
 
   const STATIONS = [
     { id: 1, name: "Saraburi Sandbox Station (เฉลิมพระเกียรติ)", district: "เฉลิมพระเกียรติ", type: "station", pillar: 1, cx: 250, cy: 155, coords: [14.5772, 100.9083], desc: "ศูนย์เรียนรู้และประสานงานหลักการขับเคลื่อนเมืองคาร์บอนต่ำ", carbon: "N/A", details: "ตั้งอยู่ ณ ตลาดหัวปลี อ.เฉลิมพระเกียรติ เป็นจุดบริการข้อมูล จัดนิทรรศการ และประสานความร่วมมือระหว่างภาครัฐ เอกชน และชุมชน" },
@@ -910,6 +925,10 @@ export default function Home({
       {/* 6 DIMENSIONS GRID PANEL */}
       <section className="w-full px-4 sm:px-6 lg:px-12 py-16 md:py-24 mx-auto space-y-10 max-w-7xl scroll-reveal border-t border-slate-100">
         <div className="space-y-2 text-center max-w-3xl mx-auto px-2">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 mb-1">
+            <Leaf className="w-3.5 h-3.5 text-emerald-600" />
+            <span>DECARBONIZATION PILLARS</span>
+          </div>
           <h3 className="text-xl sm:text-2xl md:text-3xl font-black text-slate-900 tracking-tight">
             6 มิติหลัก ขับเคลื่อนสู่เมืองคาร์บอนต่ำ
           </h3>
@@ -919,98 +938,158 @@ export default function Home({
         </div>
 
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {Object.keys(DIMENSION_DETAILS).map(key => {
-            const dim = DIMENSION_DETAILS[key];
-            const images = {
-              1: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=600&q=80',
-              2: 'https://images.unsplash.com/photo-1509391366360-2e959784a276?auto=format&fit=crop&w=600&q=80',
-              3: 'https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?auto=format&fit=crop&w=600&q=80',
-              4: 'https://images.unsplash.com/photo-1500937386664-56d1dfef3854?auto=format&fit=crop&w=600&q=80',
-              5: 'https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=600&q=80',
-              6: 'https://images.unsplash.com/photo-1563720223185-11003d516935?auto=format&fit=crop&w=600&q=80'
-            };
-
-            const dimensionStyles = {
-              1: {
-                gradient: 'from-emerald-950/95 via-emerald-900/60 to-emerald-950/90',
-                numColor: 'text-emerald-450 text-emerald-400',
-                kpi: '1,250K ตัน/ปี'
-              },
-              2: {
-                gradient: 'from-blue-950/95 via-blue-900/60 to-blue-950/90',
-                numColor: 'text-blue-450 text-blue-400',
-                kpi: '1,180K ตัน/ปี'
-              },
-              3: {
-                gradient: 'from-amber-950/95 via-amber-900/60 to-amber-950/90',
-                numColor: 'text-amber-500',
-                kpi: '680K ตัน/ปี'
-              },
-              4: {
-                gradient: 'from-purple-950/95 via-purple-900/60 to-purple-950/90',
-                numColor: 'text-purple-400',
-                kpi: '450K ตัน/ปี'
-              },
-              5: {
-                gradient: 'from-teal-950/95 via-teal-900/60 to-teal-950/90',
-                numColor: 'text-teal-400',
-                kpi: '920K ตัน/ปี'
-              },
-              6: {
-                gradient: 'from-slate-950/95 via-slate-900/60 to-slate-950/90',
-                numColor: 'text-blue-400',
-                kpi: '520K ตัน/ปี'
-              }
-            };
-
-            const style = dimensionStyles[key] || {
-              gradient: 'from-slate-950/95 via-slate-900/60 to-slate-950/90',
-              numColor: 'text-white',
-              kpi: '0 ตัน/ปี'
-            };
+          {dimensionCards.map((card, idx) => {
+            const dimId = Number(card.id || (idx + 1));
+            const cardBgStyle = buildGradientStyle(card);
+            const numColor = card.accent_color || card.start_color || '#34d399';
 
             return (
               <div 
-                key={key}
-                className="relative rounded-2xl overflow-hidden min-h-[235px] flex flex-col justify-between p-4 border group hover:scale-[1.02] transition duration-300 shadow-sm border-slate-200"
+                key={card.id || idx}
+                className="relative rounded-2xl overflow-hidden min-h-[250px] flex flex-col justify-between p-4 border group hover:scale-[1.02] transition duration-300 shadow-sm border-slate-200"
               >
                 <div 
                   className="absolute inset-0 z-0 transition duration-500 bg-center bg-cover group-hover:scale-105" 
-                  style={{ backgroundImage: `url('${images[key]}')` }}
+                  style={{ backgroundImage: `url('${card.image_url}')` }}
                 />
-                <div className={`absolute inset-0 bg-gradient-to-b ${style.gradient} z-10`} />
+                <div 
+                  className="absolute inset-0 z-10" 
+                  style={cardBgStyle}
+                />
 
-                <div className="relative z-20 w-full flex flex-col justify-between h-full min-h-[190px]">
+                <div className="relative z-20 w-full flex flex-col justify-between h-full min-h-[210px]">
                   <div className="space-y-2">
                     <div className="flex items-start justify-between">
-                      <span className={`text-2xl font-black font-mono tracking-wider ${style.numColor}`}>
-                        0{key}
+                      <span 
+                        className="text-2xl font-black font-mono tracking-wider drop-shadow-sm"
+                        style={{ color: numColor }}
+                      >
+                        0{dimId}
                       </span>
-                      <span className="text-[8px] text-slate-300/80 font-mono font-bold tracking-widest">
-                        DIMENSION 0{key}
+                      <span className="text-[9px] text-white/80 font-mono font-bold tracking-widest bg-black/30 px-2 py-0.5 rounded-full border border-white/10">
+                        {card.tag || `DIMENSION 0${dimId}`}
                       </span>
                     </div>
-                    <h4 className="text-xs font-bold leading-snug text-white lg:text-sm line-clamp-2">
-                      {dim.title}
+                    <h4 className="text-sm font-bold leading-snug text-white lg:text-base line-clamp-2 drop-shadow">
+                      {card.title}
                     </h4>
+                    {card.subtitle && (
+                      <p className="text-[11px] text-white/75 leading-relaxed line-clamp-2">
+                        {card.subtitle}
+                      </p>
+                    )}
                   </div>
 
-                  <div className="space-y-3 pt-2.5 border-t border-white/10">
+                  <div className="space-y-3 pt-3 border-t border-white/15">
                     <div className="flex items-end justify-between text-white">
                       <div>
-                        <span className="text-[8px] text-slate-300 block font-sans">โครงการ</span>
-                        <span className="font-mono text-lg font-bold leading-none">{projectsData.filter(p => p.dimension_id === Number(key)).length}</span>
+                        <span className="text-[9px] text-white/70 block font-sans">โครงการ</span>
+                        <span className="font-mono text-lg font-bold leading-none">
+                          {projectsData.filter(p => p.dimension_id === dimId).length}
+                        </span>
                       </div>
                       <div className="text-right">
-                        <span className="text-[8px] text-slate-300 block font-sans">ลด CO₂e</span>
-                        <span className="font-mono text-xs font-bold leading-none">{style.kpi}</span>
+                        <span className="text-[9px] text-white/70 block font-sans">
+                          {card.kpi_label || 'ลด CO₂e'}
+                        </span>
+                        <span className="font-mono text-xs font-bold leading-none text-emerald-300">
+                          {card.kpi_value}
+                        </span>
                       </div>
                     </div>
                     <button 
-                      onClick={() => { setCurrentPage('dimensions'); setSelectedDimension(Number(key)); }}
-                      className="w-full bg-white/10 hover:bg-white/20 text-white font-bold py-1.5 px-3 rounded-lg border border-white/20 flex items-center justify-between text-[10px] transition duration-200"
+                      onClick={() => { setCurrentPage('dimensions'); setSelectedDimension(dimId); }}
+                      className="w-full bg-white/15 hover:bg-white/25 active:scale-[0.99] text-white font-bold py-1.5 px-3 rounded-lg border border-white/20 flex items-center justify-between text-[11px] transition duration-200 backdrop-blur-sm"
                     >
                       <span className="mx-auto">ดูรายละเอียด</span>
+                      <ChevronRight className="w-3.5 h-3.5 text-white" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* QUALITY OF LIFE SECTION */}
+      <section className="w-full px-4 sm:px-6 lg:px-12 py-16 md:py-24 mx-auto space-y-10 max-w-7xl scroll-reveal border-t border-slate-200/80 bg-gradient-to-b from-slate-50/50 to-white">
+        <div className="space-y-2 text-center max-w-3xl mx-auto px-2">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-pink-50 text-pink-700 border border-pink-200 mb-1">
+            <Heart className="w-3.5 h-3.5 text-pink-600 fill-pink-600/30" />
+            <span>SARABURI CARES & INCLUSIVITY</span>
+          </div>
+          <h3 className="text-xl sm:text-2xl md:text-3xl font-black text-slate-900 tracking-tight">
+            {summaryData?.quality_of_life_title || 'คุณภาพชีวิตดี คนสระบุรีไม่ทอดทิ้งกัน'}
+          </h3>
+          <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+            {summaryData?.quality_of_life_subtitle || 'การพัฒนาคุณภาพชีวิตควบคู่สิ่งแวดล้อม ยกระดับสวัสดิการ สุขภาพ การศึกษา และชุมชนเข้มแข็งที่ยั่งยืน'}
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {qualityOfLifeCards.map((card, idx) => {
+            const cardBgStyle = buildGradientStyle(card);
+            const numColor = card.accent_color || card.start_color || '#f43f5e';
+
+            return (
+              <div 
+                key={card.id || idx}
+                className="relative rounded-2xl overflow-hidden min-h-[250px] flex flex-col justify-between p-4 border group hover:scale-[1.02] transition duration-300 shadow-sm hover:shadow-md border-slate-200"
+              >
+                <div 
+                  className="absolute inset-0 z-0 transition duration-500 bg-center bg-cover group-hover:scale-105" 
+                  style={{ backgroundImage: `url('${card.image_url}')` }}
+                />
+                <div 
+                  className="absolute inset-0 z-10" 
+                  style={cardBgStyle}
+                />
+
+                <div className="relative z-20 w-full flex flex-col justify-between h-full min-h-[210px]">
+                  <div className="space-y-2">
+                    <div className="flex items-start justify-between">
+                      <span 
+                        className="text-2xl font-black font-mono tracking-wider drop-shadow-sm"
+                        style={{ color: numColor }}
+                      >
+                        0{card.id || (idx + 1)}
+                      </span>
+                      <span className="text-[9px] text-white/90 font-mono font-bold tracking-widest bg-black/35 px-2 py-0.5 rounded-full border border-white/15">
+                        {card.tag || 'QUALITY OF LIFE'}
+                      </span>
+                    </div>
+                    <h4 className="text-sm font-bold leading-snug text-white lg:text-base line-clamp-2 drop-shadow">
+                      {card.title}
+                    </h4>
+                    {card.subtitle && (
+                      <p className="text-[11px] text-white/80 leading-relaxed line-clamp-2">
+                        {card.subtitle}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="space-y-3 pt-3 border-t border-white/15">
+                    <div className="flex items-end justify-between text-white">
+                      <div>
+                        <span className="text-[9px] text-white/70 block font-sans">
+                          {card.kpi_label || 'เป้าหมาย/ผลสัมฤทธิ์'}
+                        </span>
+                        <span className="font-mono text-base font-bold leading-tight text-white drop-shadow">
+                          {card.kpi_value}
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-pink-300 bg-black/30 px-2 py-0.5 rounded-full border border-white/10 font-medium">
+                        ชุมชนมีส่วนร่วม
+                      </span>
+                    </div>
+                    <button 
+                      onClick={() => {
+                        setCurrentPage('projects');
+                      }}
+                      className="w-full bg-white/15 hover:bg-white/25 active:scale-[0.99] text-white font-bold py-1.5 px-3 rounded-lg border border-white/20 flex items-center justify-between text-[11px] transition duration-200 backdrop-blur-sm"
+                    >
+                      <span className="mx-auto">ดูโครงการที่เกี่ยวข้อง</span>
                       <ChevronRight className="w-3.5 h-3.5 text-white" />
                     </button>
                   </div>

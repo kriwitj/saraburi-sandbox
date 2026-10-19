@@ -6,13 +6,22 @@ import {
   ArrowUpRight, BarChart3, Check, RefreshCw, Loader2, Search,
   ArrowUpDown, Filter, X, LayoutDashboard, ExternalLink, Code,
   Layers, MoveUp, MoveDown, PlusCircle, Palette, Upload, Image as ImageIcon,
-  PieChart as PieIcon, Activity, Leaf, Zap, FileSpreadsheet
+  PieChart as PieIcon, Activity, Leaf, Zap, FileSpreadsheet,
+  Heart, Sliders, RotateCcw
 } from 'lucide-react';
 import NewsFormModal from '../components/NewsFormModal';
 import { 
   parseIframeInput, DEMO_POWERBI_IFRAME, normalizeDashboardTabs,
-  TAB_COLOR_PRESETS, AVAILABLE_TAB_ICONS 
+  TAB_COLOR_PRESETS, TAB_BG_PRESETS, TAB_BAR_BG_OPTIONS, AVAILABLE_TAB_ICONS 
 } from '../utils/powerBiUtils';
+import { 
+  DEFAULT_DIMENSION_CARDS,
+  DEFAULT_QUALITY_OF_LIFE_CARDS,
+  GRADIENT_PRESETS,
+  normalizeDimensionCards,
+  normalizeQualityOfLifeCards,
+  buildGradientStyle
+} from '../utils/cardConfigs';
 
 const ADMIN_TAB_ICON_MAP = {
   BarChart3,
@@ -96,6 +105,48 @@ export default function Admin({
   });
   const [isSavingPowerBi, setIsSavingPowerBi] = useState(false);
   const [powerBiSaved, setPowerBiSaved] = useState(false);
+  const [dashboardTabBarBg, setDashboardTabBarBg] = useState(() => {
+    return summaryData?.dashboard_tab_bar_bg || 'transparent';
+  });
+
+  // Dimensions & Quality of Life Cards Management State
+  const [activeCardSection, setActiveCardSection] = useState('dimensions'); // 'dimensions' | 'quality_of_life'
+  const [activeCardIndex, setActiveCardIndex] = useState(0);
+  const [dimensionCards, setDimensionCards] = useState(() => {
+    return normalizeDimensionCards(summaryData?.dimension_cards);
+  });
+  const [qualityOfLifeCards, setQualityOfLifeCards] = useState(() => {
+    return normalizeQualityOfLifeCards(summaryData?.quality_of_life_cards);
+  });
+  const [qualityOfLifeTitle, setQualityOfLifeTitle] = useState(
+    summaryData?.quality_of_life_title || 'คุณภาพชีวิตดี คนสระบุรีไม่ทอดทิ้งกัน'
+  );
+  const [qualityOfLifeSubtitle, setQualityOfLifeSubtitle] = useState(
+    summaryData?.quality_of_life_subtitle || 'การพัฒนาคุณภาพชีวิตควบคู่สิ่งแวดล้อม ยกระดับสวัสดิการ สุขภาพ การศึกษา และชุมชนเข้มแข็งที่ยั่งยืน'
+  );
+  const [isSavingCards, setIsSavingCards] = useState(false);
+  const [cardsSaved, setCardsSaved] = useState(false);
+
+  useEffect(() => {
+    if (summaryData?.dashboard_tab_bar_bg !== undefined) {
+      setDashboardTabBarBg(summaryData.dashboard_tab_bar_bg);
+    }
+    if (summaryData?.dashboard_tabs) {
+      setDashboardTabs(normalizeDashboardTabs(summaryData.dashboard_tabs, summaryData));
+    }
+    if (summaryData?.dimension_cards) {
+      setDimensionCards(normalizeDimensionCards(summaryData.dimension_cards));
+    }
+    if (summaryData?.quality_of_life_cards) {
+      setQualityOfLifeCards(normalizeQualityOfLifeCards(summaryData.quality_of_life_cards));
+    }
+    if (summaryData?.quality_of_life_title) {
+      setQualityOfLifeTitle(summaryData.quality_of_life_title);
+    }
+    if (summaryData?.quality_of_life_subtitle) {
+      setQualityOfLifeSubtitle(summaryData.quality_of_life_subtitle);
+    }
+  }, [summaryData]);
 
   // CMS Articles Search, Filter & Sort States (Default sort: published_at descending)
   const [cmsSearch, setCmsSearch] = useState('');
@@ -281,6 +332,7 @@ export default function Admin({
         const firstIframeTab = dashboardTabs.find(t => t.type === 'iframe' && t.iframe);
         await onUpdateSummary({
           dashboard_tabs: dashboardTabs,
+          dashboard_tab_bar_bg: dashboardTabBarBg,
           powerbi_iframe: firstIframeTab ? firstIframeTab.iframe : '',
           powerbi_dashboard_enabled: true,
           powerbi_title: firstIframeTab ? firstIframeTab.title : 'ระบบแดชบอร์ด',
@@ -310,6 +362,110 @@ export default function Admin({
       alert("บันทึกข้อมูลตัวเลขหน้าแรกไม่สำเร็จ");
     } finally {
       setIsSavingSummary(false);
+    }
+  };
+
+  const handleCardFieldChange = (field, value) => {
+    if (activeCardSection === 'dimensions') {
+      setDimensionCards(prev => {
+        const next = [...prev];
+        if (next[activeCardIndex]) {
+          next[activeCardIndex] = { ...next[activeCardIndex], [field]: value };
+        }
+        return next;
+      });
+    } else {
+      setQualityOfLifeCards(prev => {
+        const next = [...prev];
+        if (next[activeCardIndex]) {
+          next[activeCardIndex] = { ...next[activeCardIndex], [field]: value };
+        }
+        return next;
+      });
+    }
+  };
+
+  const handleCardImageUpload = (file) => {
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      alert("ไฟล์รูปภาพมีขนาดใหญ่เกิน 10MB กรุณาเลือกไฟล์ที่มีขนาดเล็กลง");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const dataUrl = e.target.result;
+      handleCardFieldChange('image_url', dataUrl);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleApplyGradientPreset = (preset) => {
+    if (activeCardSection === 'dimensions') {
+      setDimensionCards(prev => {
+        const next = [...prev];
+        if (next[activeCardIndex]) {
+          next[activeCardIndex] = {
+            ...next[activeCardIndex],
+            start_color: preset.start,
+            via_color: preset.via,
+            end_color: preset.end,
+            accent_color: preset.accent
+          };
+        }
+        return next;
+      });
+    } else {
+      setQualityOfLifeCards(prev => {
+        const next = [...prev];
+        if (next[activeCardIndex]) {
+          next[activeCardIndex] = {
+            ...next[activeCardIndex],
+            start_color: preset.start,
+            via_color: preset.via,
+            end_color: preset.end,
+            accent_color: preset.accent
+          };
+        }
+        return next;
+      });
+    }
+  };
+
+  const handleResetCardsToDefault = () => {
+    if (activeCardSection === 'dimensions') {
+      if (confirm('คุณต้องการรีเซ็ตการ์ด 6 มิติหลัก กลับเป็นค่าเริ่มต้นใช่หรือไม่?')) {
+        setDimensionCards(DEFAULT_DIMENSION_CARDS);
+      }
+    } else {
+      if (confirm('คุณต้องการรีเซ็ตการ์ดคุณภาพชีวิต กลับเป็นค่าเริ่มต้นใช่หรือไม่?')) {
+        setQualityOfLifeCards(DEFAULT_QUALITY_OF_LIFE_CARDS);
+        setQualityOfLifeTitle('คุณภาพชีวิตดี คนสระบุรีไม่ทอดทิ้งกัน');
+        setQualityOfLifeSubtitle('การพัฒนาคุณภาพชีวิตควบคู่สิ่งแวดล้อม ยกระดับสวัสดิการ สุขภาพ การศึกษา และชุมชนเข้มแข็งที่ยั่งยืน');
+      }
+    }
+  };
+
+  const handleSaveAllCards = async (e) => {
+    if (e) e.preventDefault();
+    if (isSavingCards) return;
+    setIsSavingCards(true);
+    setCardsSaved(false);
+
+    try {
+      if (onUpdateSummary) {
+        await onUpdateSummary({
+          dimension_cards: dimensionCards,
+          quality_of_life_cards: qualityOfLifeCards,
+          quality_of_life_title: qualityOfLifeTitle,
+          quality_of_life_subtitle: qualityOfLifeSubtitle
+        });
+        setCardsSaved(true);
+        setTimeout(() => setCardsSaved(false), 3500);
+      }
+    } catch (err) {
+      alert("บันทึกข้อมูลการ์ดไม่สำเร็จ: " + (err?.message || ''));
+    } finally {
+      setIsSavingCards(false);
     }
   };
 
@@ -547,7 +703,7 @@ export default function Admin({
           {/* Tab 5: Power BI & Dashboard */}
           <button 
             onClick={() => setActiveAdminTab('api')}
-            className={`w-full py-2.5 px-4 rounded-xl text-xs font-bold flex items-center justify-between transition border text-left ${
+            className={`w-full py-2.5 px-4 rounded-xl text-xs font-bold flex items-center justify-between transition border text-left cursor-pointer ${
               activeAdminTab === 'api' 
                 ? 'bg-blue-50 border-blue-200 text-blue-700 shadow-xs' 
                 : 'bg-transparent border-transparent text-slate-600 hover:bg-slate-50'
@@ -560,6 +716,24 @@ export default function Admin({
             {summaryData?.powerbi_iframe && summaryData?.powerbi_dashboard_enabled !== false && (
               <span className="w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-emerald-200" title="เปิดใช้งาน Power BI อยู่"></span>
             )}
+          </button>
+
+          {/* Tab 6: Dimension & Quality of Life Cards */}
+          <button 
+            onClick={() => setActiveAdminTab('dimensions_cards')}
+            className={`w-full py-2.5 px-4 rounded-xl text-xs font-bold flex items-center justify-between transition border text-left cursor-pointer ${
+              activeAdminTab === 'dimensions_cards' 
+                ? 'bg-emerald-50 border-emerald-300 text-emerald-800 shadow-xs ring-1 ring-emerald-200' 
+                : 'bg-transparent border-transparent text-slate-600 hover:bg-slate-50'
+            }`}
+          >
+            <div className="flex items-center gap-2.5">
+              <Palette className="w-4 h-4 text-emerald-600" />
+              <span>การ์ดมิติ & คุณภาพชีวิต</span>
+            </div>
+            <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-mono font-semibold">
+              12 การ์ด
+            </span>
           </button>
         </div>
 
@@ -1459,6 +1633,42 @@ export default function Admin({
                       <Plus className="w-4 h-4" />
                       <span>เพิ่มแท็บแดชบอร์ดใหม่</span>
                     </button>
+
+                    {/* Tab Bar Strip Background Setting */}
+                    <div className="p-3 bg-white border border-slate-200 rounded-2xl space-y-2 mt-3">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                          <Layers className="w-3.5 h-3.5 text-blue-600" />
+                          <span>สีพื้นหลังแถบรวมแท็บ (Tab Bar Strip)</span>
+                        </label>
+                        <span className="text-[10px] font-mono text-slate-500 font-bold uppercase">
+                          {dashboardTabBarBg}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-slate-400">
+                        ปรับสีพื้นหลังของแถบรวมแท็บที่ล้อมรอบปุ่มแท็บทั้งหมดบนหน้า Dashboard
+                      </p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-1">
+                        {TAB_BAR_BG_OPTIONS.map((opt) => (
+                          <button
+                            key={opt.id}
+                            type="button"
+                            onClick={() => setDashboardTabBarBg(opt.hex)}
+                            className={`p-2 rounded-xl text-[10.5px] font-bold border transition text-left flex items-center gap-1.5 cursor-pointer ${
+                              dashboardTabBarBg === opt.hex
+                                ? 'bg-blue-50 border-blue-400 text-blue-900 ring-1 ring-blue-300'
+                                : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                            }`}
+                          >
+                            <span 
+                              className="w-3.5 h-3.5 rounded-full shrink-0 border border-slate-300 shadow-2xs" 
+                              style={{ backgroundColor: opt.hex === 'transparent' ? '#F8FAFC' : opt.hex }} 
+                            />
+                            <span className="truncate">{opt.name}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                   </div>
 
                   {/* Right Column: Active Tab Editor (8 cols) */}
@@ -1553,71 +1763,293 @@ export default function Admin({
                       </div>
                     </div>
 
-                    {/* Field 4: Tab Theme Color (ปรับสีแท็บได้) */}
-                    <div className="p-4 bg-white border border-slate-200 rounded-2xl space-y-3">
-                      <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-                        <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                          <Palette className="w-4 h-4 text-emerald-600" />
-                          <span>สีประจำแท็บ (Tab Theme Color)</span>
-                        </label>
-                        <div className="flex items-center gap-2">
-                          <span className="text-[11px] font-mono font-bold text-slate-600">
-                            {currentTab.color || (currentTab.type === 'original' ? '#10B981' : '#3B82F6')}
+                    {/* Field 4: Tab Colors, Background & Live Preview */}
+                    <div className="p-5 bg-white border border-slate-200 rounded-2xl space-y-5">
+                      
+                      {/* Section Title & Live Status */}
+                      <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-slate-100">
+                        <div>
+                          <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                            <Palette className="w-4 h-4 text-emerald-600" />
+                            <span>การจัดการสีแท็บ และ สีพื้นหลัง (Tab Colors & Backgrounds)</span>
+                          </label>
+                          <p className="text-[10.5px] text-slate-500 mt-0.5">
+                            กำหนดสีพื้นหลังแท็บปกติ, สีพื้นหลังขณะเลือก (Active), และสีตัวอักษร/ไอคอน
+                          </p>
+                        </div>
+
+                        {/* Quick Reset Tab Colors */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const defCol = currentTab.type === 'original' ? '#10B981' : '#3B82F6';
+                            handleUpdateActiveTabField('color', defCol);
+                            handleUpdateActiveTabField('bg_color', '#FFFFFF');
+                            handleUpdateActiveTabField('active_bg_color', defCol);
+                            handleUpdateActiveTabField('text_color', '#334155');
+                            handleUpdateActiveTabField('active_text_color', '#FFFFFF');
+                            handleUpdateActiveTabField('border_color', '');
+                          }}
+                          className="text-[11px] font-bold text-slate-500 hover:text-slate-800 flex items-center gap-1 px-2.5 py-1 rounded-lg border border-slate-200 hover:bg-slate-50 transition cursor-pointer"
+                        >
+                          <RotateCcw className="w-3 h-3 text-slate-400" />
+                          <span>รีเซ็ตสีแท็บนี้</span>
+                        </button>
+                      </div>
+
+                      {/* Live Tab Preview Box (แสดงตัวอย่างปุ่มแท็บ 2 สถานะ: ปกติ vs ขณะถูกเลือก) */}
+                      <div className="p-4 bg-slate-50/80 border border-slate-200 rounded-xl space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] font-bold text-slate-700 flex items-center gap-1.5">
+                            <Eye className="w-3.5 h-3.5 text-blue-600" />
+                            <span>ตัวอย่างปุ่มแท็บบนหน้าแดชบอร์ด (Live Tab Preview):</span>
                           </span>
-                          <div 
-                            className="w-5 h-5 rounded-full border border-slate-300 shadow-2xs" 
-                            style={{ backgroundColor: currentTab.color || (currentTab.type === 'original' ? '#10B981' : '#3B82F6') }} 
-                          />
+                          <span className="text-[10px] text-slate-400 font-mono">สถานะปกติ vs สถานะเลือก</span>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-4 pt-1">
+                          {/* Inactive State Preview */}
+                          <div className="space-y-1">
+                            <span className="text-[9.5px] font-bold text-slate-400 uppercase tracking-wider block">1. สถานะปกติ (Inactive)</span>
+                            <div
+                              style={{
+                                backgroundColor: currentTab.bg_color || '#FFFFFF',
+                                borderColor: currentTab.border_color || '#E2E8F0',
+                                color: currentTab.text_color || '#334155'
+                              }}
+                              className="flex items-center gap-2 px-4 py-2 rounded-2xl text-xs font-bold border shadow-2xs select-none transition"
+                            >
+                              {currentTab.logo_url ? (
+                                <img src={currentTab.logo_url} alt="" className="w-4 h-4 object-contain rounded shrink-0 bg-white p-0.5 border border-slate-200" />
+                              ) : (
+                                (() => {
+                                  const IconComp = ADMIN_TAB_ICON_MAP[currentTab.icon_name] || LayoutDashboard;
+                                  return (
+                                    <IconComp 
+                                      className="w-3.5 h-3.5 shrink-0" 
+                                      style={{ color: currentTab.text_color || currentTab.color || '#3B82F6' }} 
+                                    />
+                                  );
+                                })()
+                              )}
+                              <span>{currentTab.title || 'ชื่อแท็บแดชบอร์ด'}</span>
+                            </div>
+                          </div>
+
+                          {/* Active State Preview */}
+                          <div className="space-y-1">
+                            <span className="text-[9.5px] font-bold text-slate-400 uppercase tracking-wider block">2. สถานะเลือก (Active)</span>
+                            <div
+                              style={{
+                                backgroundColor: currentTab.active_bg_color || currentTab.color || '#3B82F6',
+                                borderColor: currentTab.active_bg_color || currentTab.color || '#3B82F6',
+                                color: currentTab.active_text_color || '#FFFFFF',
+                                boxShadow: `0 4px 14px 0 ${(currentTab.active_bg_color || currentTab.color || '#3B82F6')}40`
+                              }}
+                              className="flex items-center gap-2 px-4 py-2 rounded-2xl text-xs font-bold border shadow-xs select-none ring-1 ring-white/30 transition"
+                            >
+                              {currentTab.logo_url ? (
+                                <img src={currentTab.logo_url} alt="" className="w-4 h-4 object-contain rounded shrink-0 bg-white p-0.5 border border-white/20" />
+                              ) : (
+                                (() => {
+                                  const IconComp = ADMIN_TAB_ICON_MAP[currentTab.icon_name] || LayoutDashboard;
+                                  return (
+                                    <IconComp 
+                                      className="w-3.5 h-3.5 shrink-0" 
+                                      style={{ color: currentTab.active_text_color || '#FFFFFF' }} 
+                                    />
+                                  );
+                                })()
+                              )}
+                              <span>{currentTab.title || 'ชื่อแท็บแดชบอร์ด'}</span>
+                            </div>
+                          </div>
                         </div>
                       </div>
 
-                      {/* Color Presets */}
-                      <div className="space-y-1.5">
-                        <span className="text-[11px] text-slate-500 font-medium block">ชุดสีแนะนำตามมาตรฐาน:</span>
-                        <div className="flex flex-wrap items-center gap-2">
-                          {TAB_COLOR_PRESETS.map((c) => {
-                            const activeCol = (currentTab.color || (currentTab.type === 'original' ? '#10B981' : '#3B82F6')).toLowerCase();
-                            const isChosen = activeCol === c.hex.toLowerCase();
-                            return (
-                              <button
-                                key={c.hex}
-                                type="button"
-                                onClick={() => handleUpdateActiveTabField('color', c.hex)}
-                                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer border ${
-                                  isChosen
-                                    ? 'border-slate-800 ring-2 ring-slate-800/30 shadow-xs text-slate-900 bg-slate-100'
-                                    : 'border-slate-200 hover:border-slate-300 text-slate-600 bg-white'
-                                }`}
-                                title={c.label}
-                              >
-                                <span className="w-3.5 h-3.5 rounded-full shrink-0 shadow-2xs" style={{ backgroundColor: c.hex }} />
-                                <span className="text-[11px]">{c.name}</span>
-                              </button>
-                            );
-                          })}
+                      {/* 1. Inactive Tab Background Color (สีพื้นหลังแท็บปกติ) */}
+                      <div className="space-y-3 pt-2">
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                            <span className="w-2.5 h-2.5 rounded-full bg-slate-300 border border-slate-400"></span>
+                            <span>1. สีพื้นหลังแท็บปกติ (Inactive Tab Background Color)</span>
+                          </label>
+                          <span className="text-[11px] font-mono font-bold text-slate-600 bg-slate-50 px-2 py-0.5 rounded border border-slate-200">
+                            {currentTab.bg_color || '#FFFFFF'}
+                          </span>
+                        </div>
+
+                        {/* Inactive Background Presets */}
+                        <div className="space-y-1.5">
+                          <span className="text-[10.5px] text-slate-500 font-medium block">ชุดสีพื้นหลังแนะนำ:</span>
+                          <div className="flex flex-wrap items-center gap-2">
+                            {TAB_BG_PRESETS.map((bg) => {
+                              const isSelected = (currentTab.bg_color || '#FFFFFF').toLowerCase() === bg.hex.toLowerCase();
+                              return (
+                                <button
+                                  key={bg.hex}
+                                  type="button"
+                                  onClick={() => {
+                                    handleUpdateActiveTabField('bg_color', bg.hex);
+                                    if (bg.text) {
+                                      handleUpdateActiveTabField('text_color', bg.text);
+                                    }
+                                  }}
+                                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer border ${
+                                    isSelected
+                                      ? 'border-emerald-600 ring-2 ring-emerald-400/40 shadow-xs text-emerald-900 bg-emerald-50'
+                                      : 'border-slate-200 hover:border-slate-300 text-slate-600 bg-white'
+                                  }`}
+                                  title={bg.label}
+                                >
+                                  <span 
+                                    className="w-3.5 h-3.5 rounded-full shrink-0 border border-slate-300 shadow-2xs" 
+                                    style={{ backgroundColor: bg.hex }} 
+                                  />
+                                  <span className="text-[11px]">{bg.name}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* Inactive Custom Color + Text Color */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                          <div className="flex items-center justify-between gap-2 p-2.5 bg-slate-50 rounded-xl border border-slate-200">
+                            <span className="text-[11px] font-bold text-slate-600">กำหนดสีพื้นหลัง Hex เอง:</span>
+                            <div className="flex items-center gap-1.5">
+                              <input
+                                type="color"
+                                value={currentTab.bg_color || '#FFFFFF'}
+                                onChange={(e) => handleUpdateActiveTabField('bg_color', e.target.value)}
+                                className="w-7 h-7 rounded border-0 cursor-pointer p-0 bg-transparent"
+                              />
+                              <input
+                                type="text"
+                                value={currentTab.bg_color || '#FFFFFF'}
+                                onChange={(e) => handleUpdateActiveTabField('bg_color', e.target.value)}
+                                placeholder="#FFFFFF"
+                                className="w-20 p-1 text-[11px] font-mono font-bold uppercase border rounded border-slate-300 bg-white"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between gap-2 p-2.5 bg-slate-50 rounded-xl border border-slate-200">
+                            <span className="text-[11px] font-bold text-slate-600">สีตัวหนังสือแท็บปกติ:</span>
+                            <div className="flex items-center gap-1.5">
+                              <input
+                                type="color"
+                                value={currentTab.text_color || '#334155'}
+                                onChange={(e) => handleUpdateActiveTabField('text_color', e.target.value)}
+                                className="w-7 h-7 rounded border-0 cursor-pointer p-0 bg-transparent"
+                              />
+                              <input
+                                type="text"
+                                value={currentTab.text_color || '#334155'}
+                                onChange={(e) => handleUpdateActiveTabField('text_color', e.target.value)}
+                                placeholder="#334155"
+                                className="w-20 p-1 text-[11px] font-mono font-bold uppercase border rounded border-slate-300 bg-white"
+                              />
+                            </div>
+                          </div>
                         </div>
                       </div>
 
-                      {/* Custom Color Input */}
-                      <div className="flex items-center gap-3 pt-2 border-t border-slate-100">
-                        <span className="text-[11px] text-slate-500 font-medium">หรือกำหนดรหัสสี Hex เอง:</span>
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="color"
-                            value={currentTab.color || (currentTab.type === 'original' ? '#10B981' : '#3B82F6')}
-                            onChange={(e) => handleUpdateActiveTabField('color', e.target.value)}
-                            className="w-8 h-8 rounded-lg cursor-pointer border-0 p-0 bg-transparent"
-                            title="คลิกเพื่อเลือกสี"
-                          />
-                          <input
-                            type="text"
-                            value={currentTab.color || (currentTab.type === 'original' ? '#10B981' : '#3B82F6')}
-                            onChange={(e) => handleUpdateActiveTabField('color', e.target.value)}
-                            placeholder="#10B981"
-                            className="w-24 p-1.5 text-xs font-mono font-bold uppercase border rounded-lg border-slate-300 focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-white"
-                          />
+                      <hr className="border-slate-100" />
+
+                      {/* 2. Active Tab Background Color & Theme Accent (สีพื้นหลังแท็บขณะเลือก) */}
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                            <span 
+                              className="w-2.5 h-2.5 rounded-full shadow-2xs"
+                              style={{ backgroundColor: currentTab.active_bg_color || currentTab.color || '#3B82F6' }}
+                            />
+                            <span>2. สีพื้นหลังแท็บขณะเลือก & ธีมหลัก (Active Tab Background & Theme)</span>
+                          </label>
+                          <span className="text-[11px] font-mono font-bold text-slate-600 bg-slate-50 px-2 py-0.5 rounded border border-slate-200">
+                            {currentTab.active_bg_color || currentTab.color || '#3B82F6'}
+                          </span>
+                        </div>
+
+                        {/* Active Presets */}
+                        <div className="space-y-1.5">
+                          <span className="text-[10.5px] text-slate-500 font-medium block">ชุดสีแนะนำตามมาตรฐาน:</span>
+                          <div className="flex flex-wrap items-center gap-2">
+                            {TAB_COLOR_PRESETS.map((c) => {
+                              const activeCol = (currentTab.active_bg_color || currentTab.color || '#3B82F6').toLowerCase();
+                              const isChosen = activeCol === c.hex.toLowerCase();
+                              return (
+                                <button
+                                  key={c.hex}
+                                  type="button"
+                                  onClick={() => {
+                                    handleUpdateActiveTabField('color', c.hex);
+                                    handleUpdateActiveTabField('active_bg_color', c.hex);
+                                  }}
+                                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer border ${
+                                    isChosen
+                                      ? 'border-slate-800 ring-2 ring-slate-800/30 shadow-xs text-slate-900 bg-slate-100'
+                                      : 'border-slate-200 hover:border-slate-300 text-slate-600 bg-white'
+                                  }`}
+                                  title={c.label}
+                                >
+                                  <span className="w-3.5 h-3.5 rounded-full shrink-0 shadow-2xs" style={{ backgroundColor: c.hex }} />
+                                  <span className="text-[11px]">{c.name}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* Active Custom Color + Active Text Color */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                          <div className="flex items-center justify-between gap-2 p-2.5 bg-slate-50 rounded-xl border border-slate-200">
+                            <span className="text-[11px] font-bold text-slate-600">กำหนดสีพื้นหลังเลือก Hex:</span>
+                            <div className="flex items-center gap-1.5">
+                              <input
+                                type="color"
+                                value={currentTab.active_bg_color || currentTab.color || '#3B82F6'}
+                                onChange={(e) => {
+                                  handleUpdateActiveTabField('color', e.target.value);
+                                  handleUpdateActiveTabField('active_bg_color', e.target.value);
+                                }}
+                                className="w-7 h-7 rounded border-0 cursor-pointer p-0 bg-transparent"
+                              />
+                              <input
+                                type="text"
+                                value={currentTab.active_bg_color || currentTab.color || '#3B82F6'}
+                                onChange={(e) => {
+                                  handleUpdateActiveTabField('color', e.target.value);
+                                  handleUpdateActiveTabField('active_bg_color', e.target.value);
+                                }}
+                                placeholder="#3B82F6"
+                                className="w-20 p-1 text-[11px] font-mono font-bold uppercase border rounded border-slate-300 bg-white"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between gap-2 p-2.5 bg-slate-50 rounded-xl border border-slate-200">
+                            <span className="text-[11px] font-bold text-slate-600">สีตัวหนังสือแท็บขณะเลือก:</span>
+                            <div className="flex items-center gap-1.5">
+                              <input
+                                type="color"
+                                value={currentTab.active_text_color || '#FFFFFF'}
+                                onChange={(e) => handleUpdateActiveTabField('active_text_color', e.target.value)}
+                                className="w-7 h-7 rounded border-0 cursor-pointer p-0 bg-transparent"
+                              />
+                              <input
+                                type="text"
+                                value={currentTab.active_text_color || '#FFFFFF'}
+                                onChange={(e) => handleUpdateActiveTabField('active_text_color', e.target.value)}
+                                placeholder="#FFFFFF"
+                                className="w-20 p-1 text-[11px] font-mono font-bold uppercase border rounded border-slate-300 bg-white"
+                              />
+                            </div>
+                          </div>
                         </div>
                       </div>
+
                     </div>
 
                     {/* Field 5: Tab Icon & Logo Upload (ไอคอน + โลโก้ upload ได้) */}
@@ -1947,6 +2379,541 @@ export default function Admin({
                       </button>
                     </div>
                   </div>
+                </div>
+
+              </div>
+            );
+          })()}
+
+          {/* ========================================================
+              TAB 6: DIMENSION & QUALITY OF LIFE CARDS MANAGEMENT
+             ======================================================== */}
+          {activeAdminTab === 'dimensions_cards' && (() => {
+            const currentList = activeCardSection === 'dimensions' ? dimensionCards : qualityOfLifeCards;
+            const currentCard = currentList[activeCardIndex] || currentList[0] || {};
+
+            return (
+              <div className="space-y-6 animate-in fade-in duration-150">
+                
+                {/* Header & Action Bar */}
+                <div className="border-b border-slate-100 pb-4 flex flex-wrap justify-between items-center gap-3">
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                      <Palette className="w-4 h-4 text-emerald-600" />
+                      <span>จัดการการ์ดหน้าแรก (6 มิติหลัก & คุณภาพชีวิต)</span>
+                    </h4>
+                    <p className="text-[11px] text-slate-500 mt-0.5">
+                      ปรับเปลี่ยนรูปภาพ, สี Gradient, ความโปร่งแสง (Opacity), ข้อความ และตัวชี้วัด (KPI) เพื่อให้แสดงผลบนหน้าแรกทันที
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleResetCardsToDefault}
+                      className="px-3 py-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
+                      title="รีเซ็ตกลับเป็นค่าเริ่มต้นสำหรับหมวดหมู่นี้"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5 text-slate-500" />
+                      <span>รีเซ็ตค่าเริ่มต้น</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSaveAllCards}
+                      disabled={isSavingCards}
+                      className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 shadow-sm transition cursor-pointer ${
+                        cardsSaved 
+                          ? 'bg-emerald-600 text-white' 
+                          : 'bg-emerald-700 hover:bg-emerald-800 text-white'
+                      }`}
+                    >
+                      {isSavingCards ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          <span>กำลังบันทึก...</span>
+                        </>
+                      ) : cardsSaved ? (
+                        <>
+                          <Check className="w-3.5 h-3.5 text-white" />
+                          <span>บันทึกสำเร็จแล้ว!</span>
+                        </>
+                      ) : (
+                        <>
+                          <Save className="w-3.5 h-3.5" />
+                          <span>บันทึกการเปลี่ยนแปลงทั้งหมด</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Section Toggle: Dimensions vs Quality of Life */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-100/80 p-1.5 rounded-2xl border border-slate-200/80">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveCardSection('dimensions');
+                      setActiveCardIndex(0);
+                    }}
+                    className={`py-3 px-4 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition cursor-pointer ${
+                      activeCardSection === 'dimensions'
+                        ? 'bg-white text-emerald-800 shadow-sm border border-emerald-200 ring-1 ring-emerald-300'
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+                    }`}
+                  >
+                    <Leaf className="w-4 h-4 text-emerald-600" />
+                    <span>6 มิติหลัก ขับเคลื่อนสู่เมืองคาร์บอนต่ำ (6 การ์ด)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveCardSection('quality_of_life');
+                      setActiveCardIndex(0);
+                    }}
+                    className={`py-3 px-4 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition cursor-pointer ${
+                      activeCardSection === 'quality_of_life'
+                        ? 'bg-white text-pink-800 shadow-sm border border-pink-200 ring-1 ring-pink-300'
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+                    }`}
+                  >
+                    <Heart className="w-4 h-4 text-pink-600" />
+                    <span>คุณภาพชีวิตดี คนสระบุรีไม่ทอดทิ้งกัน (6 การ์ด)</span>
+                  </button>
+                </div>
+
+                {/* Quality of life section title & subtitle editor (visible only when in quality_of_life section) */}
+                {activeCardSection === 'quality_of_life' && (
+                  <div className="bg-pink-50/60 border border-pink-200/70 p-4 rounded-2xl space-y-3">
+                    <div className="flex items-center gap-2 text-pink-800 text-xs font-bold">
+                      <Heart className="w-4 h-4 text-pink-600" />
+                      <span>หัวข้อและคำอธิบายส่วน "คุณภาพชีวิตดี คนสระบุรีไม่ทอดทิ้งกัน"</span>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-bold text-slate-700 block">ชื่อหัวข้อหมวด</label>
+                        <input
+                          type="text"
+                          value={qualityOfLifeTitle}
+                          onChange={(e) => setQualityOfLifeTitle(e.target.value)}
+                          className="w-full bg-white border border-pink-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-pink-300"
+                          placeholder="คุณภาพชีวิตดี คนสระบุรีไม่ทอดทิ้งกัน"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-bold text-slate-700 block">คำบรรยายย่อย</label>
+                        <input
+                          type="text"
+                          value={qualityOfLifeSubtitle}
+                          onChange={(e) => setQualityOfLifeSubtitle(e.target.value)}
+                          className="w-full bg-white border border-pink-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-pink-300"
+                          placeholder="การพัฒนาคุณภาพชีวิตควบคู่สิ่งแวดล้อม..."
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Main 2-Column Editor */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                  
+                  {/* Left Column (Cards Selector List) */}
+                  <div className="lg:col-span-4 space-y-3">
+                    <div className="flex items-center justify-between px-1">
+                      <span className="text-xs font-bold text-slate-700">เลือกการ์ดที่ต้องการแก้ไข</span>
+                      <span className="text-[10px] text-slate-400 font-mono">
+                        {activeCardIndex + 1} จาก {currentList.length}
+                      </span>
+                    </div>
+
+                    <div className="space-y-2 max-h-[680px] overflow-y-auto pr-1">
+                      {currentList.map((card, idx) => {
+                        const isSelected = activeCardIndex === idx;
+                        const cardBgStyle = buildGradientStyle(card);
+                        const num = String(card.id || (idx + 1)).padStart(2, '0');
+
+                        return (
+                          <div
+                            key={card.id || idx}
+                            onClick={() => setActiveCardIndex(idx)}
+                            className={`p-3 rounded-2xl border transition cursor-pointer flex items-center gap-3 ${
+                              isSelected
+                                ? 'bg-emerald-50/70 border-emerald-400 shadow-sm ring-2 ring-emerald-300/60'
+                                : 'bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                            }`}
+                          >
+                            {/* Card mini thumbnail with live gradient */}
+                            <div 
+                              className="relative w-14 h-14 rounded-xl overflow-hidden shrink-0 border border-slate-200 shadow-2xs"
+                            >
+                              <div 
+                                className="absolute inset-0 bg-cover bg-center"
+                                style={{ backgroundImage: `url('${card.image_url}')` }}
+                              />
+                              <div 
+                                className="absolute inset-0"
+                                style={cardBgStyle}
+                              />
+                              <div className="relative z-10 w-full h-full flex flex-col justify-between p-1">
+                                <span 
+                                  className="text-[10px] font-black font-mono leading-none"
+                                  style={{ color: card.accent_color || card.start_color || '#fff' }}
+                                >
+                                  {num}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Info */}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between gap-1">
+                                <span className="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-wider">
+                                  การ์ด #{num}
+                                </span>
+                                {card.kpi_value && (
+                                  <span className="text-[9px] font-mono font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 truncate max-w-[90px]">
+                                    {card.kpi_value}
+                                  </span>
+                                )}
+                              </div>
+                              <h5 className="text-xs font-bold text-slate-800 truncate mt-0.5" title={card.title}>
+                                {card.title || 'ยังไม่ได้ระบุชื่อ'}
+                              </h5>
+                              <p className="text-[10px] text-slate-500 truncate" title={card.subtitle}>
+                                {card.subtitle || card.tag || '-'}
+                              </p>
+                            </div>
+
+                            <ChevronRight className={`w-4 h-4 shrink-0 transition ${isSelected ? 'text-emerald-600 translate-x-0.5' : 'text-slate-300'}`} />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Right Column (Card Form Editor + Live Preview) */}
+                  <div className="lg:col-span-8 space-y-6 bg-slate-50/70 border border-slate-200/90 rounded-2xl p-5">
+                    
+                    {/* Live Preview Header */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                          <Eye className="w-4 h-4 text-emerald-600" />
+                          <span>ตัวอย่างการแสดงผลจริงบนหน้าหลัก (Live Preview)</span>
+                        </span>
+                        <span className="text-[10px] text-slate-500 font-mono">
+                          การ์ดลำดับที่ 0{currentCard.id || (activeCardIndex + 1)}
+                        </span>
+                      </div>
+
+                      {/* Render preview card */}
+                      <div className="max-w-md mx-auto my-3">
+                        <div 
+                          className="relative rounded-2xl overflow-hidden min-h-[250px] flex flex-col justify-between p-4 border shadow-md border-slate-200 transition"
+                        >
+                          <div 
+                            className="absolute inset-0 z-0 bg-center bg-cover" 
+                            style={{ backgroundImage: `url('${currentCard.image_url}')` }}
+                          />
+                          <div 
+                            className="absolute inset-0 z-10" 
+                            style={buildGradientStyle(currentCard)}
+                          />
+
+                          <div className="relative z-20 w-full flex flex-col justify-between h-full min-h-[210px]">
+                            <div className="space-y-2">
+                              <div className="flex items-start justify-between">
+                                <span 
+                                  className="text-2xl font-black font-mono tracking-wider drop-shadow-sm"
+                                  style={{ color: currentCard.accent_color || currentCard.start_color || '#34d399' }}
+                                >
+                                  0{currentCard.id || (activeCardIndex + 1)}
+                                </span>
+                                <span className="text-[9px] text-white/85 font-mono font-bold tracking-widest bg-black/35 px-2 py-0.5 rounded-full border border-white/15">
+                                  {currentCard.tag || (activeCardSection === 'dimensions' ? `DIMENSION 0${activeCardIndex + 1}` : 'QUALITY OF LIFE')}
+                                </span>
+                              </div>
+                              <h4 className="text-sm font-bold leading-snug text-white line-clamp-2 drop-shadow">
+                                {currentCard.title || 'หัวข้อการ์ดตัวอย่าง'}
+                              </h4>
+                              {currentCard.subtitle && (
+                                <p className="text-[11px] text-white/80 leading-relaxed line-clamp-2">
+                                  {currentCard.subtitle}
+                                </p>
+                              )}
+                            </div>
+
+                            <div className="space-y-3 pt-3 border-t border-white/15">
+                              <div className="flex items-end justify-between text-white">
+                                <div>
+                                  <span className="text-[9px] text-white/70 block font-sans">
+                                    {currentCard.kpi_label || (activeCardSection === 'dimensions' ? 'ลด CO₂e' : 'เป้าหมาย/ผลลัพธ์')}
+                                  </span>
+                                  <span className="font-mono text-base font-bold leading-none text-emerald-300">
+                                    {currentCard.kpi_value || '0'}
+                                  </span>
+                                </div>
+                                <span className="text-[9px] font-sans bg-black/25 px-2 py-0.5 rounded text-white/90 border border-white/10">
+                                  ตัวอย่างปุ่ม
+                                </span>
+                              </div>
+                              <div className="w-full bg-white/15 text-white font-bold py-1.5 px-3 rounded-lg border border-white/20 flex items-center justify-between text-[11px] backdrop-blur-xs">
+                                <span className="mx-auto">ดูรายละเอียด</span>
+                                <ChevronRight className="w-3.5 h-3.5 text-white" />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <hr className="border-slate-200" />
+
+                    {/* Editor Form */}
+                    <div className="space-y-5">
+                      
+                      {/* 1. Image Settings */}
+                      <div className="bg-white p-4 rounded-xl border border-slate-200 space-y-3">
+                        <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                          <ImageIcon className="w-4 h-4 text-emerald-600" />
+                          <span>1. รูปภาพพื้นหลังของการ์ด (Card Background Image)</span>
+                        </label>
+                        
+                        <div className="space-y-2">
+                          <div className="flex gap-2">
+                            <input
+                              type="text"
+                              value={currentCard.image_url || ''}
+                              onChange={(e) => handleCardFieldChange('image_url', e.target.value)}
+                              placeholder="ระบุ URL รูปภาพ (เช่น https://... หรือ data:image/...)"
+                              className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                            />
+                            <label className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer border border-slate-300 transition shrink-0">
+                              <Upload className="w-3.5 h-3.5" />
+                              <span>อัปโหลดรูป</span>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                onChange={(e) => {
+                                  if (e.target.files && e.target.files[0]) {
+                                    handleCardImageUpload(e.target.files[0]);
+                                  }
+                                }}
+                                className="hidden"
+                              />
+                            </label>
+                          </div>
+                          <p className="text-[10px] text-slate-500">
+                            รองรับไฟล์ JPG, PNG, WebP หรือสามารถใส่ URL ตรงจากคลังภาพได้
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* 2. Gradient Color & Opacity Settings */}
+                      <div className="bg-white p-4 rounded-xl border border-slate-200 space-y-4">
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                            <Palette className="w-4 h-4 text-emerald-600" />
+                            <span>2. สี Gradient & ความโปร่งแสง (Color & Transparency)</span>
+                          </label>
+                        </div>
+
+                        {/* Presets */}
+                        <div className="space-y-1.5">
+                          <span className="text-[11px] font-bold text-slate-600 block">
+                            ชุดสีแนะนำ (Presets):
+                          </span>
+                          <div className="flex flex-wrap gap-2">
+                            {GRADIENT_PRESETS.map((preset) => (
+                              <button
+                                key={preset.name}
+                                type="button"
+                                onClick={() => handleApplyGradientPreset(preset)}
+                                className="px-2.5 py-1.5 rounded-lg border border-slate-200 hover:border-slate-400 bg-slate-50 text-[11px] font-medium flex items-center gap-1.5 transition cursor-pointer"
+                              >
+                                <span 
+                                  className="w-3 h-3 rounded-full border border-black/20"
+                                  style={{ background: `linear-gradient(135deg, ${preset.start}, ${preset.end})` }}
+                                />
+                                <span>{preset.name}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Custom Color Pickers */}
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
+                          <div className="space-y-1">
+                            <span className="text-[10px] font-bold text-slate-600 block">สีเริ่มต้น (Start)</span>
+                            <div className="flex items-center gap-1.5 bg-slate-50 p-1.5 rounded-lg border border-slate-200">
+                              <input
+                                type="color"
+                                value={currentCard.start_color || '#022c22'}
+                                onChange={(e) => handleCardFieldChange('start_color', e.target.value)}
+                                className="w-7 h-7 rounded border-0 cursor-pointer p-0 bg-transparent"
+                              />
+                              <input
+                                type="text"
+                                value={currentCard.start_color || '#022c22'}
+                                onChange={(e) => handleCardFieldChange('start_color', e.target.value)}
+                                className="w-full text-[11px] font-mono font-bold text-slate-700 bg-transparent border-0 focus:outline-none"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="space-y-1">
+                            <span className="text-[10px] font-bold text-slate-600 block">สีตรงกลาง (Via)</span>
+                            <div className="flex items-center gap-1.5 bg-slate-50 p-1.5 rounded-lg border border-slate-200">
+                              <input
+                                type="color"
+                                value={currentCard.via_color || currentCard.start_color || '#064e3b'}
+                                onChange={(e) => handleCardFieldChange('via_color', e.target.value)}
+                                className="w-7 h-7 rounded border-0 cursor-pointer p-0 bg-transparent"
+                              />
+                              <input
+                                type="text"
+                                value={currentCard.via_color || currentCard.start_color || '#064e3b'}
+                                onChange={(e) => handleCardFieldChange('via_color', e.target.value)}
+                                className="w-full text-[11px] font-mono font-bold text-slate-700 bg-transparent border-0 focus:outline-none"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="space-y-1">
+                            <span className="text-[10px] font-bold text-slate-600 block">สีปลายทาง (End)</span>
+                            <div className="flex items-center gap-1.5 bg-slate-50 p-1.5 rounded-lg border border-slate-200">
+                              <input
+                                type="color"
+                                value={currentCard.end_color || '#022c22'}
+                                onChange={(e) => handleCardFieldChange('end_color', e.target.value)}
+                                className="w-7 h-7 rounded border-0 cursor-pointer p-0 bg-transparent"
+                              />
+                              <input
+                                type="text"
+                                value={currentCard.end_color || '#022c22'}
+                                onChange={(e) => handleCardFieldChange('end_color', e.target.value)}
+                                className="w-full text-[11px] font-mono font-bold text-slate-700 bg-transparent border-0 focus:outline-none"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="space-y-1">
+                            <span className="text-[10px] font-bold text-slate-600 block">สีตัวเลข / สีเน้น</span>
+                            <div className="flex items-center gap-1.5 bg-slate-50 p-1.5 rounded-lg border border-slate-200">
+                              <input
+                                type="color"
+                                value={currentCard.accent_color || '#34d399'}
+                                onChange={(e) => handleCardFieldChange('accent_color', e.target.value)}
+                                className="w-7 h-7 rounded border-0 cursor-pointer p-0 bg-transparent"
+                              />
+                              <input
+                                type="text"
+                                value={currentCard.accent_color || '#34d399'}
+                                onChange={(e) => handleCardFieldChange('accent_color', e.target.value)}
+                                className="w-full text-[11px] font-mono font-bold text-slate-700 bg-transparent border-0 focus:outline-none"
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Opacity Slider */}
+                        <div className="space-y-2 pt-2 border-t border-slate-100">
+                          <div className="flex justify-between items-center text-xs">
+                            <span className="font-bold text-slate-700 flex items-center gap-1.5">
+                              <Sliders className="w-3.5 h-3.5 text-emerald-600" />
+                              <span>ความทึบของสี Gradient (Overlay Opacity):</span>
+                            </span>
+                            <span className="font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                              {Math.round((Number(currentCard.opacity) || 0.90) * 100)}%
+                            </span>
+                          </div>
+
+                          <input
+                            type="range"
+                            min="0.20"
+                            max="1.00"
+                            step="0.05"
+                            value={currentCard.opacity !== undefined ? currentCard.opacity : 0.90}
+                            onChange={(e) => handleCardFieldChange('opacity', parseFloat(e.target.value))}
+                            className="w-full accent-emerald-600 cursor-pointer"
+                          />
+                          <div className="flex justify-between text-[10px] text-slate-400">
+                            <span>20% (โปร่งแสงสูง - เห็นรูปชัด)</span>
+                            <span>90% (ค่าแนะนำ - ตัวหนังสือชัด)</span>
+                            <span>100% (ทึบแสงเต็มที่)</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 3. Text and KPI Settings */}
+                      <div className="bg-white p-4 rounded-xl border border-slate-200 space-y-3">
+                        <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                          <FileText className="w-4 h-4 text-emerald-600" />
+                          <span>3. ข้อความ และตัวชี้วัด (Texts & KPI)</span>
+                        </label>
+
+                        <div className="space-y-3">
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div className="sm:col-span-2 space-y-1">
+                              <label className="text-[11px] font-bold text-slate-600 block">ชื่อการ์ด (Title)</label>
+                              <input
+                                type="text"
+                                value={currentCard.title || ''}
+                                onChange={(e) => handleCardFieldChange('title', e.target.value)}
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                                placeholder="เช่น อุตสาหกรรมสีเขียว..."
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-[11px] font-bold text-slate-600 block">แท็กหัวการ์ด (Tag)</label>
+                              <input
+                                type="text"
+                                value={currentCard.tag || ''}
+                                onChange={(e) => handleCardFieldChange('tag', e.target.value)}
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                                placeholder="DIMENSION 01"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="space-y-1">
+                            <label className="text-[11px] font-bold text-slate-600 block">คำอธิบายย่อย (Subtitle / Description)</label>
+                            <input
+                              type="text"
+                              value={currentCard.subtitle || ''}
+                              onChange={(e) => handleCardFieldChange('subtitle', e.target.value)}
+                              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                              placeholder="เช่น มุ่งเน้นการเปลี่ยนผ่านภาคอุตสาหกรรมหลัก..."
+                            />
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div className="space-y-1">
+                              <label className="text-[11px] font-bold text-slate-600 block">ค่าตัวชี้วัด (KPI Value)</label>
+                              <input
+                                type="text"
+                                value={currentCard.kpi_value || ''}
+                                onChange={(e) => handleCardFieldChange('kpi_value', e.target.value)}
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-400 font-mono font-bold"
+                                placeholder="เช่น 1,250K ตัน/ปี หรือ 80,000+ ราย"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-[11px] font-bold text-slate-600 block">ป้ายกำกับตัวชี้วัด (KPI Label)</label>
+                              <input
+                                type="text"
+                                value={currentCard.kpi_label || ''}
+                                onChange={(e) => handleCardFieldChange('kpi_label', e.target.value)}
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                                placeholder="เช่น ลด CO₂e หรือ ประชาชนได้รับบริการ"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                    </div>
+                  </div>
+
                 </div>
 
               </div>

@@ -269,6 +269,7 @@ export const initialSummaryData = {
   powerbi_dashboard_enabled: true,
   powerbi_title: 'ระบบแดชบอร์ดติดตามข้อมูล (Decarbonization Dashboard)',
   powerbi_height: '850px',
+  dashboard_tab_bar_bg: 'transparent',
   dashboard_tabs: [
     {
       id: 'tab-carbon-overview',
@@ -288,7 +289,9 @@ export const initialSummaryData = {
       height: '850px',
       enabled: true
     }
-  ]
+  ],
+  quality_of_life_title: 'คุณภาพชีวิตดี คนสระบุรีไม่ทอดทิ้งกัน',
+  quality_of_life_subtitle: 'การพัฒนาสังคม สุขภาวะ และการยกระดับคุณภาพชีวิตอย่างยั่งยืนเพื่อประชาชนทุกกลุ่มวัยอย่างเท่าเทียม'
 };
 
 export const initialCmsArticles = [];

@@ -40,10 +40,14 @@ const renderDashboardTabIcon = (tab, isActive, isFullscreenMode = false) => {
     );
   }
   const IconComponent = DASHBOARD_TAB_ICONS[tab.icon_name] || (tab.type === 'original' ? BarChart3 : LayoutDashboard);
+  const iconColor = isActive 
+    ? (tab.active_text_color || '#FFFFFF') 
+    : (tab.text_color || tabColor);
+
   return (
     <IconComponent 
       className="w-3.5 h-3.5 shrink-0 transition-colors" 
-      style={{ color: isActive ? '#FFFFFF' : tabColor }} 
+      style={{ color: iconColor }} 
     />
   );
 };
@@ -585,6 +589,12 @@ export default function Dashboard({
               const isActive = tab.id === selectedTabId;
               const isOriginal = tab.type === 'original';
               const tabColor = tab.color || (isOriginal ? '#10B981' : '#3B82F6');
+              const activeBg = tab.active_bg_color || tabColor;
+              const inactiveBg = tab.bg_color && tab.bg_color !== '#FFFFFF' ? tab.bg_color : '#1E293B';
+              const activeTextColor = tab.active_text_color || '#FFFFFF';
+              const inactiveTextColor = tab.text_color || (tab.bg_color && tab.bg_color !== '#FFFFFF' ? '#334155' : '#CBD5E1');
+              const borderColor = tab.border_color || (isActive ? activeBg : '#334155');
+
               return (
                 <button
                   key={tab.id}
@@ -592,17 +602,21 @@ export default function Dashboard({
                   style={
                     isActive
                       ? {
-                          backgroundColor: tabColor,
-                          borderColor: tabColor,
-                          color: '#FFFFFF',
-                          boxShadow: `0 2px 10px 0 ${tabColor}60`
+                          backgroundColor: activeBg,
+                          borderColor: borderColor,
+                          color: activeTextColor,
+                          boxShadow: `0 2px 10px 0 ${activeBg}60`
                         }
-                      : {}
+                      : {
+                          backgroundColor: inactiveBg,
+                          borderColor: borderColor,
+                          color: inactiveTextColor
+                        }
                   }
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                     isActive
-                      ? 'text-white shadow-sm ring-2 ring-white/30'
-                      : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700'
+                      ? 'shadow-sm ring-2 ring-white/30'
+                      : 'hover:opacity-90 border'
                   }`}
                   title={tab.title}
                 >
@@ -653,12 +667,27 @@ export default function Dashboard({
           MULTI-TAB NAVIGATION BAR (เฉพาะตอนไม่ได้เปิดเต็มจอ)
          ======================================================== */}
       {!isFullscreen && (
-        <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-200">
+        <div 
+          className="flex flex-wrap items-center justify-between gap-3 p-2 rounded-2xl transition-colors border"
+          style={{
+            backgroundColor: summaryData?.dashboard_tab_bar_bg && summaryData.dashboard_tab_bar_bg !== 'transparent'
+              ? summaryData.dashboard_tab_bar_bg
+              : 'transparent',
+            borderColor: summaryData?.dashboard_tab_bar_bg && summaryData.dashboard_tab_bar_bg !== 'transparent'
+              ? 'rgba(203, 213, 225, 0.7)'
+              : '#E2E8F0'
+          }}
+        >
           <div className="flex flex-wrap items-center gap-2 flex-grow">
             {displayTabs.map((tab) => {
               const isActive = tab.id === selectedTabId;
               const isTabOriginal = tab.type === 'original';
               const tabColor = tab.color || (isTabOriginal ? '#10B981' : '#3B82F6');
+              const activeBg = tab.active_bg_color || tabColor;
+              const inactiveBg = tab.bg_color || '#FFFFFF';
+              const activeTextColor = tab.active_text_color || '#FFFFFF';
+              const inactiveTextColor = tab.text_color || '#334155';
+              const borderColor = tab.border_color || (isActive ? activeBg : '#E2E8F0');
 
               return (
                 <button
@@ -667,20 +696,23 @@ export default function Dashboard({
                   style={
                     isActive
                       ? {
-                          backgroundColor: tabColor,
-                          borderColor: tabColor,
-                          color: '#FFFFFF',
-                          boxShadow: `0 4px 14px 0 ${tabColor}40`
+                          backgroundColor: activeBg,
+                          borderColor: borderColor,
+                          color: activeTextColor,
+                          boxShadow: `0 4px 14px 0 ${activeBg}40`
                         }
                       : {
-                          borderColor: '#E2E8F0'
+                          backgroundColor: inactiveBg,
+                          borderColor: borderColor,
+                          color: inactiveTextColor
                         }
                   }
                   className={`flex items-center gap-2 px-4 py-2 rounded-2xl text-xs font-bold transition-all cursor-pointer shadow-2xs ${
                     isActive
-                      ? 'text-white'
-                      : 'bg-white hover:bg-slate-50 text-slate-700 border'
+                      ? 'ring-1 ring-white/20'
+                      : 'hover:opacity-95 hover:shadow-xs border'
                   }`}
+                  title={tab.title}
                 >
                   {renderDashboardTabIcon(tab, isActive, false)}
                   <span>{tab.title}</span>
@@ -693,7 +725,7 @@ export default function Dashboard({
           {isAuthenticated && (
             <button
               onClick={handleGoToAdmin}
-              className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-xl transition cursor-pointer shrink-0"
+              className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-slate-600 bg-white/90 hover:bg-white border border-slate-200 rounded-xl transition cursor-pointer shrink-0 shadow-2xs"
               title="เพิ่ม-ลด หรือแก้ไขแท็บแดชบอร์ดในระบบหลังบ้าน"
             >
               <Settings className="w-3.5 h-3.5 text-slate-600" />
