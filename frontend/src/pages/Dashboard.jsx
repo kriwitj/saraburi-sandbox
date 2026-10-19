@@ -72,8 +72,25 @@ export default function Dashboard({
   // Render Power BI Embed Dashboard
   // ----------------------------------------------------
   const renderPowerBiDashboard = () => {
-    const dashboardTitle = summaryData?.powerbi_title || parsedIframe.title || 'ระบบแดชบอร์ดติดตามคาร์บอน (Decarbonization Dashboard)';
-    const customHeight = summaryData?.powerbi_height || '850px';
+    const isPowerBiSource = (parsedIframe.url || '').toLowerCase().includes('powerbi');
+    const isNsoSource = (parsedIframe.url || '').toLowerCase().includes('nso.go.th');
+    
+    const dashboardTitle = summaryData?.powerbi_title || parsedIframe.title || (
+      isNsoSource ? 'ระบบแดชบอร์ดสถิติจังหวัด (NSO Provincial Dashboard)' : 'ระบบแดชบอร์ดติดตามข้อมูล (Decarbonization Dashboard)'
+    );
+    const customHeight = summaryData?.powerbi_height || parsedIframe.height || '850px';
+
+    const sourceBadge = isPowerBiSource 
+      ? 'Power BI Live Connected' 
+      : isNsoSource 
+      ? 'NSO Stat Dashboard Live' 
+      : 'Interactive Dashboard Live';
+
+    const sourceDescription = isPowerBiSource
+      ? 'ระบบวิเคราะห์และติดตามข้อมูลเชื่อมโยงสดผ่าน Microsoft Power BI Interactive Dashboard'
+      : isNsoSource
+      ? 'ระบบตัวชี้วัดและสถิติการพัฒนาจังหวัดเชื่อมโยงสดผ่าน สำนักงานสถิติแห่งชาติ (NSO)'
+      : 'ระบบวิเคราะห์และติดตามข้อมูลเชื่อมโยงสดผ่าน Interactive Dashboard Embed';
 
     return (
       <section className="w-full px-4 sm:px-6 lg:px-12 py-10 sm:py-14 mx-auto space-y-6 max-w-7xl">
@@ -90,7 +107,7 @@ export default function Dashboard({
               </h2>
             </div>
             <p className="text-xs text-slate-400 pl-0.5">
-              ระบบวิเคราะห์และติดตามปริมาณก๊าซเรือนกระจกเชื่อมโยงข้อมูลสดผ่าน Microsoft Power BI Interactive Dashboard
+              {sourceDescription}
             </p>
           </div>
 
@@ -100,7 +117,7 @@ export default function Dashboard({
                 <span className="absolute inline-flex w-full h-full rounded-full opacity-75 animate-ping bg-emerald-400"></span>
                 <span className="relative inline-flex w-2 h-2 rounded-full bg-emerald-500"></span>
               </span>
-              <span>Power BI Live Connected</span>
+              <span>{sourceBadge}</span>
             </span>
 
             {/* Switch to Legacy Dashboard */}
@@ -198,7 +215,7 @@ export default function Dashboard({
         <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-[11px] text-slate-500 font-mono">
           <div className="flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-            <span>แหล่งข้อมูล: ระบบเชื่อมต่อ Microsoft Power BI Service ผ่าน iframe sandbox</span>
+            <span>แหล่งข้อมูล: {isPowerBiSource ? 'ระบบเชื่อมต่อ Microsoft Power BI Service' : isNsoSource ? 'ระบบสถิติการพัฒนาจังหวัด สำนักงานสถิติแห่งชาติ (NSO)' : 'ระบบเชื่อมต่อ Interactive Dashboard'} ผ่าน iframe sandbox</span>
           </div>
           <div className="flex items-center gap-3">
             <span>สถานะ: แสดงผลทดแทนแดชบอร์ดเดิมอัตโนมัติ</span>
