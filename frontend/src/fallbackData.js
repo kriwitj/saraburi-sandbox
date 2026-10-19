@@ -264,7 +264,11 @@ export const initialSummaryData = {
   agri_current_rai: 28500,
   total_budget_baht: 367000000,
   partnership_model: '4Ps (Public-Private-People Partnership)',
-  wef_initiative_member: true
+  wef_initiative_member: true,
+  powerbi_iframe: '',
+  powerbi_dashboard_enabled: true,
+  powerbi_title: 'ระบบแดชบอร์ดติดตามคาร์บอน (Decarbonization Dashboard)',
+  powerbi_height: '850px'
 };
 
 export const initialCmsArticles = [];

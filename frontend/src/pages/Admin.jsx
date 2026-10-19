@@ -4,9 +4,10 @@ import {
   ChevronRight, ChevronLeft, Lock, Eye, AlertCircle, Globe, Terminal, LogOut,
   Pencil, Trash2, TrendingUp, Sparkles, Images, CheckCircle2, Save,
   ArrowUpRight, BarChart3, Check, RefreshCw, Loader2, Search,
-  ArrowUpDown, Filter, X
+  ArrowUpDown, Filter, X, LayoutDashboard, ExternalLink, Code
 } from 'lucide-react';
 import NewsFormModal from '../components/NewsFormModal';
+import { parseIframeInput, DEMO_POWERBI_IFRAME } from '../utils/powerBiUtils';
 
 export default function Admin({
   isAuthenticated,
@@ -64,6 +65,16 @@ export default function Admin({
   const [isSavingSummary, setIsSavingSummary] = useState(false);
   const [isSavingProject, setIsSavingProject] = useState(false);
   const [isSavingActivity, setIsSavingActivity] = useState(false);
+
+  // Power BI Embed Management State
+  const [powerBiForm, setPowerBiForm] = useState({
+    powerbi_iframe: summaryData?.powerbi_iframe || '',
+    powerbi_dashboard_enabled: summaryData?.powerbi_dashboard_enabled !== false,
+    powerbi_title: summaryData?.powerbi_title || 'ระบบแดชบอร์ดติดตามคาร์บอน (Decarbonization Dashboard)',
+    powerbi_height: summaryData?.powerbi_height || '850px',
+  });
+  const [isSavingPowerBi, setIsSavingPowerBi] = useState(false);
+  const [powerBiSaved, setPowerBiSaved] = useState(false);
 
   // CMS Articles Search, Filter & Sort States (Default sort: published_at descending)
   const [cmsSearch, setCmsSearch] = useState('');
@@ -155,8 +166,38 @@ export default function Admin({
   useEffect(() => {
     if (summaryData) {
       setEditingSummary(summaryData);
+      setPowerBiForm({
+        powerbi_iframe: summaryData.powerbi_iframe || '',
+        powerbi_dashboard_enabled: summaryData.powerbi_dashboard_enabled !== false,
+        powerbi_title: summaryData.powerbi_title || 'ระบบแดชบอร์ดติดตามคาร์บอน (Decarbonization Dashboard)',
+        powerbi_height: summaryData.powerbi_height || '850px',
+      });
     }
   }, [summaryData]);
+
+  const handleSavePowerBi = async (e) => {
+    if (e) e.preventDefault();
+    if (isSavingPowerBi) return;
+    setIsSavingPowerBi(true);
+    setPowerBiSaved(false);
+
+    try {
+      if (onUpdateSummary) {
+        await onUpdateSummary({
+          powerbi_iframe: powerBiForm.powerbi_iframe.trim(),
+          powerbi_dashboard_enabled: powerBiForm.powerbi_dashboard_enabled,
+          powerbi_title: powerBiForm.powerbi_title.trim(),
+          powerbi_height: powerBiForm.powerbi_height.trim() || '850px',
+        });
+        setPowerBiSaved(true);
+        setTimeout(() => setPowerBiSaved(false), 3500);
+      }
+    } catch (err) {
+      alert("บันทึกการตั้งค่า Power BI ไม่สำเร็จ: " + (err?.message || ''));
+    } finally {
+      setIsSavingPowerBi(false);
+    }
+  };
 
   const handleSaveSummaryForm = async (e) => {
     e.preventDefault();
@@ -406,17 +447,22 @@ export default function Admin({
             <span>บันทึกความคืบหน้ารายพื้นที่</span>
           </button>
 
-          {/* Tab 5: Power BI API */}
+          {/* Tab 5: Power BI & Dashboard */}
           <button 
             onClick={() => setActiveAdminTab('api')}
-            className={`w-full py-2.5 px-4 rounded-xl text-xs font-bold flex items-center gap-2.5 transition border text-left ${
+            className={`w-full py-2.5 px-4 rounded-xl text-xs font-bold flex items-center justify-between transition border text-left ${
               activeAdminTab === 'api' 
                 ? 'bg-blue-50 border-blue-200 text-blue-700 shadow-xs' 
                 : 'bg-transparent border-transparent text-slate-600 hover:bg-slate-50'
             }`}
           >
-            <Terminal className="w-4 h-4 text-slate-600" />
-            <span>API Gateway สำหรับ Power BI</span>
+            <div className="flex items-center gap-2.5">
+              <LayoutDashboard className="w-4 h-4 text-blue-600" />
+              <span>Power BI & แดชบอร์ด</span>
+            </div>
+            {summaryData?.powerbi_iframe && summaryData?.powerbi_dashboard_enabled !== false && (
+              <span className="w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-emerald-200" title="เปิดใช้งาน Power BI อยู่"></span>
+            )}
           </button>
         </div>
 
@@ -1167,66 +1213,300 @@ export default function Admin({
           )}
 
           {/* ========================================================
-              TAB 5: POWER BI API GATEWAY CONNECTOR
+              TAB 5: POWER BI DASHBOARD & API GATEWAY
              ======================================================== */}
-          {activeAdminTab === 'api' && (
-            <div className="space-y-6 animate-in fade-in duration-150">
-              <div className="border-b border-slate-100 pb-3">
-                <h4 className="text-xs font-bold text-slate-800">Power BI REST API Data Endpoints</h4>
-                <p className="text-[10px] text-slate-500 mt-1">คัดลอก URL API เหล่านี้ไปผูกในโปรแกรม Microsoft Power BI เพื่อดึงฐานข้อมูลแบบ Real-time</p>
+          {activeAdminTab === 'api' && (() => {
+            const parsedPreview = parseIframeInput(powerBiForm.powerbi_iframe);
+            const isPowerBiActive = Boolean(parsedPreview.url && powerBiForm.powerbi_dashboard_enabled);
+
+            return (
+              <div className="space-y-8 animate-in fade-in duration-150">
+                
+                {/* Section Header */}
+                <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-slate-100">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <LayoutDashboard className="w-5 h-5 text-blue-600" />
+                      <h4 className="text-sm font-black text-slate-800">จัดการเชื่อมโยง Power BI & โค้ด &lt;iframe&gt;</h4>
+                    </div>
+                    <p className="text-xs text-slate-500">
+                      กรอกโค้ด &lt;iframe&gt; หรือ URL เพื่อนำมารายงานแทนแดชบอร์ดเดิมบนหน้า <code className="px-1 py-0.5 bg-slate-100 rounded text-emerald-700 font-bold">/dashboard</code> (ปรับเปลี่ยนได้ตลอดเวลา)
+                    </p>
+                  </div>
+                  
+                  {/* Status Indicator */}
+                  <div className="flex items-center gap-2">
+                    {isPowerBiActive ? (
+                      <span className="text-[11px] font-bold px-3 py-1.5 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl flex items-center gap-1.5 shadow-2xs">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                        <span>แสดงผล Power BI แทนแดชบอร์ดเดิมอยู่</span>
+                      </span>
+                    ) : (
+                      <span className="text-[11px] font-bold px-3 py-1.5 bg-slate-100 border border-slate-200 text-slate-600 rounded-xl flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-slate-400"></span>
+                        <span>แสดงผลแดชบอร์ดระบบเดิม (Default)</span>
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* 1. Embed Settings Form Card */}
+                <div className="p-6 bg-slate-50 border border-slate-200/90 rounded-3xl space-y-6 shadow-xs">
+                  
+                  {/* Top Switch Banner */}
+                  <div className="flex flex-wrap items-center justify-between gap-4 p-4 bg-white border border-slate-200 rounded-2xl">
+                    <div className="space-y-0.5">
+                      <strong className="text-xs font-bold text-slate-800 flex items-center gap-2">
+                        <span>เปิดใช้งาน Power BI แดชบอร์ดบนหน้าเว็บ (/dashboard)</span>
+                      </strong>
+                      <p className="text-[11px] text-slate-500">
+                        เมื่อเปิดใช้งาน ระบบจะนำ &lt;iframe&gt; ด้านล่างไปแสดงผลแทนที่แดชบอร์ดเดิมทันที
+                      </p>
+                    </div>
+
+                    <label className="relative inline-flex items-center cursor-pointer select-none">
+                      <input 
+                        type="checkbox" 
+                        checked={powerBiForm.powerbi_dashboard_enabled}
+                        onChange={(e) => setPowerBiForm(prev => ({ ...prev, powerbi_dashboard_enabled: e.target.checked }))}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+                      <span className="ml-2.5 text-xs font-bold text-slate-700">
+                        {powerBiForm.powerbi_dashboard_enabled ? 'เปิดใช้งาน' : 'ปิดใช้งาน'}
+                      </span>
+                    </label>
+                  </div>
+
+                  {/* iFrame Code / URL Input */}
+                  <div className="space-y-2">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                        <Code className="w-4 h-4 text-emerald-600" />
+                        <span>โค้ด &lt;iframe&gt; หรือ ลิงก์ URL ของ Power BI Dashboard</span>
+                        <span className="text-red-500">*</span>
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setPowerBiForm(prev => ({ ...prev, powerbi_iframe: DEMO_POWERBI_IFRAME }))}
+                          className="px-2.5 py-1 text-[11px] font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition flex items-center gap-1 shadow-2xs"
+                        >
+                          <Sparkles className="w-3.5 h-3.5" />
+                          <span>ใส่ตัวอย่าง Power BI (Demo)</span>
+                        </button>
+                        {powerBiForm.powerbi_iframe && (
+                          <button
+                            type="button"
+                            onClick={() => setPowerBiForm(prev => ({ ...prev, powerbi_iframe: '' }))}
+                            className="px-2.5 py-1 text-[11px] font-bold text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg transition shadow-2xs"
+                          >
+                            ล้างข้อมูล
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    <textarea
+                      rows={5}
+                      value={powerBiForm.powerbi_iframe}
+                      onChange={(e) => setPowerBiForm(prev => ({ ...prev, powerbi_iframe: e.target.value }))}
+                      placeholder='<iframe title="Decarbonization Dashboard" width="100%" height="800" src="https://app.powerbi.com/view?r=..." frameborder="0" allowFullScreen="true"></iframe> หรือวางเฉพาะ URL เช่น https://app.powerbi.com/view?r=...'
+                      className="w-full p-3 font-mono text-xs border rounded-xl border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+                    />
+
+                    {/* How to get iframe tips */}
+                    <div className="p-3 bg-blue-50/70 border border-blue-150 rounded-xl text-[11px] text-blue-900 space-y-1">
+                      <strong className="block font-bold">💡 วิธีนำโค้ด &lt;iframe&gt; มาจาก Power BI:</strong>
+                      <ol className="list-decimal list-inside space-y-0.5 text-blue-800 text-[10.5px]">
+                        <li>เปิดรายงานที่ต้องการใน <strong>Microsoft Power BI Service (app.powerbi.com)</strong></li>
+                        <li>ไปที่เมนู <strong>File (ไฟล์)</strong> &gt; <strong>Embed report (ฝังรายงาน)</strong> &gt; เลือก <strong>Publish to web (public)</strong> หรือ <strong>Website or portal</strong></li>
+                        <li>คัดลอกโค้ด HTML <code>&lt;iframe&gt;</code> ทั้งหมด หรือคัดลอกเฉพาะลิงก์ <code>src="..."</code> มาวางในช่องด้านบนนี้</li>
+                        <li>กดปุ่ม <strong>"บันทึกการตั้งค่าแดชบอร์ด"</strong> ด้านล่าง ระบบจะอัปเดตไปแสดงผลบนหน้า <code>/dashboard</code> ทันที</li>
+                      </ol>
+                    </div>
+                  </div>
+
+                  {/* Settings Grid: Title & Height */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-slate-700">ชื่อหัวข้อแดชบอร์ด (Dashboard Title)</label>
+                      <input 
+                        type="text"
+                        value={powerBiForm.powerbi_title}
+                        onChange={(e) => setPowerBiForm(prev => ({ ...prev, powerbi_title: e.target.value }))}
+                        placeholder="ระบบแดชบอร์ดติดตามคาร์บอน (Decarbonization Dashboard)"
+                        className="w-full p-2.5 text-xs border rounded-xl border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-slate-700">ความสูงของกรอบแดชบอร์ด (Height)</label>
+                      <select
+                        value={powerBiForm.powerbi_height}
+                        onChange={(e) => setPowerBiForm(prev => ({ ...prev, powerbi_height: e.target.value }))}
+                        className="w-full p-2.5 text-xs border rounded-xl border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white cursor-pointer"
+                      >
+                        <option value="750px">750px (ขนาดกะทัดรัด)</option>
+                        <option value="850px">850px (มาตรฐาน แนะนำ)</option>
+                        <option value="950px">950px (ขยายใหญ่)</option>
+                        <option value="1050px">1050px (รายงานขนาดยาว)</option>
+                        <option value="calc(100vh - 160px)">calc(100vh - 160px) (พอดีจอ Responsive)</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-200">
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={handleSavePowerBi}
+                        disabled={isSavingPowerBi}
+                        className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold text-xs rounded-xl flex items-center gap-2 transition shadow-sm cursor-pointer"
+                      >
+                        {isSavingPowerBi ? (
+                          <>
+                            <RefreshCw className="w-4 h-4 animate-spin" />
+                            <span>กำลังบันทึก...</span>
+                          </>
+                        ) : powerBiSaved ? (
+                          <>
+                            <Check className="w-4 h-4 text-emerald-200" />
+                            <span>บันทึกสำเร็จเรียบร้อย!</span>
+                          </>
+                        ) : (
+                          <>
+                            <Save className="w-4 h-4" />
+                            <span>บันทึกการตั้งค่าแดชบอร์ด</span>
+                          </>
+                        )}
+                      </button>
+
+                      {powerBiSaved && (
+                        <span className="text-xs font-bold text-emerald-600 animate-in fade-in">
+                          อัปเดตระบบเรียบร้อย สามารถเปิดดูหน้าแดชบอร์ดได้ทันที
+                        </span>
+                      )}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setCurrentPage('dashboard')}
+                      className="px-4 py-2.5 bg-white hover:bg-slate-100 border border-slate-300 text-slate-700 font-bold text-xs rounded-xl flex items-center gap-1.5 transition shadow-2xs cursor-pointer"
+                    >
+                      <Eye className="w-4 h-4 text-emerald-600" />
+                      <span>เปิดดูหน้าแดชบอร์ดจริง (/dashboard)</span>
+                    </button>
+                  </div>
+
+                </div>
+
+                {/* 2. Live Preview Card */}
+                <div className="p-6 bg-white border border-slate-200 rounded-3xl space-y-4 shadow-xs">
+                  <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-slate-100">
+                    <div className="flex items-center gap-2">
+                      <Eye className="w-4 h-4 text-blue-600" />
+                      <h5 className="text-xs font-bold text-slate-800">พรีวิวการแสดงผล &lt;iframe&gt; แบบสด (Live Preview)</h5>
+                    </div>
+                    {parsedPreview.url ? (
+                      <span className="text-[10px] font-mono font-bold px-2.5 py-1 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg truncate max-w-md">
+                        URL: {parsedPreview.url}
+                      </span>
+                    ) : (
+                      <span className="text-[10px] text-slate-400 font-mono">
+                        ยังไม่ได้กรอก URL / โค้ด iframe
+                      </span>
+                    )}
+                  </div>
+
+                  {parsedPreview.url ? (
+                    <div className="relative w-full h-[450px] bg-slate-900 rounded-2xl border border-slate-200 overflow-hidden shadow-inner">
+                      <iframe 
+                        src={parsedPreview.url}
+                        title="Live Preview"
+                        className="w-full h-full border-0 bg-white"
+                        allowFullScreen={true}
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      />
+                    </div>
+                  ) : (
+                    <div className="p-12 text-center border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50 space-y-2">
+                      <LayoutDashboard className="w-8 h-8 text-slate-300 mx-auto" />
+                      <p className="text-xs font-bold text-slate-600">ยังไม่มีข้อมูล &lt;iframe&gt; ในขณะนี้</p>
+                      <p className="text-[11px] text-slate-400">
+                        เมื่อวางโค้ด &lt;iframe&gt; หรือ URL ในช่องด้านบน ตัวอย่างรายงานจะปรากฏในช่องนี้ทันที
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* 3. Power BI REST API Endpoints Card */}
+                <div className="p-6 bg-slate-50 border border-slate-200 rounded-3xl space-y-4 shadow-xs">
+                  <div className="border-b border-slate-200/80 pb-3">
+                    <div className="flex items-center gap-2">
+                      <Terminal className="w-4 h-4 text-slate-700" />
+                      <h4 className="text-xs font-bold text-slate-800">Power BI REST API Data Endpoints</h4>
+                    </div>
+                    <p className="text-[10px] text-slate-500 mt-1">
+                      คัดลอก URL API เหล่านี้ไปผูกในโปรแกรม Microsoft Power BI Desktop/Service เพื่อดึงฐานข้อมูลจังหวัดสระบุรีแบบ Real-time เข้าไปสร้างรายงาน
+                    </p>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="bg-white border border-slate-200 p-4 rounded-2xl flex flex-wrap justify-between items-center gap-3 shadow-2xs">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="bg-emerald-50 text-emerald-700 text-[9px] font-mono font-bold px-2 py-0.5 rounded border border-emerald-200">GET</span>
+                          <strong className="text-xs font-mono text-slate-700">/api/v1/summary</strong>
+                        </div>
+                        <p className="text-[10px] text-slate-500">สรุปดัชนีชี้วัดภาพรวมคาร์บอนสะสม, GPP จังหวัด และสัดส่วนการปล่อยก๊าซสะสม</p>
+                      </div>
+                      <button 
+                        onClick={() => handleOpenApiView('/api/v1/summary')}
+                        className="bg-slate-50 border border-slate-200 hover:bg-slate-100 text-[10px] text-slate-700 font-bold px-3 py-1.5 rounded-lg shadow-2xs transition cursor-pointer"
+                      >
+                        ดึงข้อมูล JSON payload
+                      </button>
+                    </div>
+
+                    <div className="bg-white border border-slate-200 p-4 rounded-2xl flex flex-wrap justify-between items-center gap-3 shadow-2xs">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="bg-emerald-50 text-emerald-700 text-[9px] font-mono font-bold px-2 py-0.5 rounded border border-emerald-200">GET</span>
+                          <strong className="text-xs font-mono text-slate-700">/api/v1/projects</strong>
+                        </div>
+                        <p className="text-[10px] text-slate-500">ดึงข้อมูลฐานโครงการยุทธศาสตร์ 17 โครงการ (งบประมาณ, ตัวชี้วัด, และหน่วยงาน)</p>
+                      </div>
+                      <button 
+                        onClick={() => handleOpenApiView('/api/v1/projects')}
+                        className="bg-slate-50 border border-slate-200 hover:bg-slate-100 text-[10px] text-slate-700 font-bold px-3 py-1.5 rounded-lg shadow-2xs transition cursor-pointer"
+                      >
+                        ดึงข้อมูล JSON payload
+                      </button>
+                    </div>
+
+                    <div className="bg-white border border-slate-200 p-4 rounded-2xl flex flex-wrap justify-between items-center gap-3 shadow-2xs">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="bg-emerald-50 text-emerald-700 text-[9px] font-mono font-bold px-2 py-0.5 rounded border border-emerald-200">GET</span>
+                          <strong className="text-xs font-mono text-slate-700">/api/v1/cms</strong>
+                        </div>
+                        <p className="text-[10px] text-slate-500">ดึงข้อมูลข่าวสารประชาสัมพันธ์และกิจกรรม พร้อมคลังรูปภาพที่แนบ</p>
+                      </div>
+                      <button 
+                        onClick={() => handleOpenApiView('/api/v1/cms')}
+                        className="bg-white border border-slate-200 hover:bg-slate-100 text-[10px] text-slate-700 font-bold px-3 py-1.5 rounded-lg shadow-2xs transition cursor-pointer"
+                      >
+                        ดึงข้อมูล JSON payload
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
               </div>
-
-              <div className="space-y-4">
-                <div className="bg-slate-50 border border-slate-200 p-4 rounded-2xl flex flex-wrap justify-between items-center gap-3">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="bg-emerald-50 text-emerald-700 text-[8px] font-mono font-bold px-2 py-0.5 rounded border border-emerald-200">GET</span>
-                      <strong className="text-xs font-mono text-slate-700">/api/v1/summary</strong>
-                    </div>
-                    <p className="text-[10px] text-slate-500">สรุปดัชนีชี้วัดภาพรวมคาร์บอนสะสม, GPP จังหวัด และสัดส่วนการปล่อยก๊าซสะสม</p>
-                  </div>
-                  <button 
-                    onClick={() => handleOpenApiView('/api/v1/summary')}
-                    className="bg-white border border-slate-200 hover:bg-slate-100 text-[10px] text-slate-700 font-bold px-3 py-1.5 rounded-lg shadow-sm transition"
-                  >
-                    ดึงข้อมูล JSON payload
-                  </button>
-                </div>
-
-                <div className="bg-slate-50 border border-slate-200 p-4 rounded-2xl flex flex-wrap justify-between items-center gap-3">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="bg-emerald-50 text-emerald-700 text-[8px] font-mono font-bold px-2 py-0.5 rounded border border-emerald-200">GET</span>
-                      <strong className="text-xs font-mono text-slate-700">/api/v1/projects</strong>
-                    </div>
-                    <p className="text-[10px] text-slate-500">ดึงข้อมูลฐานโครงการยุทธศาสตร์ 17 โครงการ (งบประมาณ, ตัวชี้วัด, และหน่วยงาน)</p>
-                  </div>
-                  <button 
-                    onClick={() => handleOpenApiView('/api/v1/projects')}
-                    className="bg-white border border-slate-200 hover:bg-slate-100 text-[10px] text-slate-700 font-bold px-3 py-1.5 rounded-lg shadow-sm transition"
-                  >
-                    ดึงข้อมูล JSON payload
-                  </button>
-                </div>
-
-                <div className="bg-slate-50 border border-slate-200 p-4 rounded-2xl flex flex-wrap justify-between items-center gap-3">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="bg-emerald-50 text-emerald-700 text-[8px] font-mono font-bold px-2 py-0.5 rounded border border-emerald-200">GET</span>
-                      <strong className="text-xs font-mono text-slate-700">/api/v1/cms</strong>
-                    </div>
-                    <p className="text-[10px] text-slate-500">ดึงข้อมูลข่าวสารประชาสัมพันธ์และกิจกรรม พร้อมคลังรูปภาพที่แนบ</p>
-                  </div>
-                  <button 
-                    onClick={() => handleOpenApiView('/api/v1/cms')}
-                    className="bg-white border border-slate-200 hover:bg-slate-100 text-[10px] text-slate-700 font-bold px-3 py-1.5 rounded-lg shadow-sm transition"
-                  >
-                    ดึงข้อมูล JSON payload
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
+            );
+          })()}
 
         </div>
       </div>

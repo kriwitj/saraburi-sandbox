@@ -890,6 +890,9 @@ export default function App() {
             summaryData={summaryData}
             projectsData={projectsData}
             activitiesData={activitiesData}
+            isAuthenticated={isAuthenticated}
+            setCurrentPage={setCurrentPage}
+            setActiveAdminTab={setActiveAdminTab}
           />
         )}
 

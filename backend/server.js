@@ -855,6 +855,73 @@ app.put('/api/v1/summary', async (req, res) => {
 });
 
 // ----------------------------------------------------
+// Power BI Embed Settings Endpoints
+// ----------------------------------------------------
+app.get('/api/v1/powerbi', async (req, res) => {
+  let config = {
+    powerbi_iframe: localStore.summaryData?.powerbi_iframe || '',
+    powerbi_dashboard_enabled: localStore.summaryData?.powerbi_dashboard_enabled !== false,
+    powerbi_title: localStore.summaryData?.powerbi_title || 'ระบบแดชบอร์ดติดตามคาร์บอน (Decarbonization Dashboard)',
+    powerbi_height: localStore.summaryData?.powerbi_height || '850px',
+  };
+
+  if (isDbConnected) {
+    try {
+      const sRes = await pool.query("SELECT data FROM summary_metrics WHERE key = 'platform_summary'");
+      if (sRes.rows.length > 0 && sRes.rows[0].data) {
+        const d = sRes.rows[0].data;
+        config = {
+          powerbi_iframe: d.powerbi_iframe !== undefined ? d.powerbi_iframe : config.powerbi_iframe,
+          powerbi_dashboard_enabled: d.powerbi_dashboard_enabled !== undefined ? d.powerbi_dashboard_enabled : config.powerbi_dashboard_enabled,
+          powerbi_title: d.powerbi_title || config.powerbi_title,
+          powerbi_height: d.powerbi_height || config.powerbi_height,
+        };
+      }
+    } catch (err) {
+      console.warn('Error reading Power BI config from DB:', err.message);
+    }
+  }
+
+  res.json(config);
+});
+
+app.put('/api/v1/powerbi', async (req, res) => {
+  const { powerbi_iframe, powerbi_dashboard_enabled, powerbi_title, powerbi_height } = req.body;
+  
+  const updatedSummary = {
+    ...localStore.summaryData,
+    ...(powerbi_iframe !== undefined && { powerbi_iframe: String(powerbi_iframe || '') }),
+    ...(powerbi_dashboard_enabled !== undefined && { powerbi_dashboard_enabled: Boolean(powerbi_dashboard_enabled) }),
+    ...(powerbi_title !== undefined && { powerbi_title: String(powerbi_title || '') }),
+    ...(powerbi_height !== undefined && { powerbi_height: String(powerbi_height || '850px') }),
+  };
+
+  localStore.summaryData = updatedSummary;
+  saveLocalStore();
+
+  if (isDbConnected) {
+    try {
+      await pool.query(`
+        INSERT INTO summary_metrics (key, data)
+        VALUES ('platform_summary', $1::jsonb)
+        ON CONFLICT (key) DO UPDATE SET data = EXCLUDED.data, updated_at = CURRENT_TIMESTAMP
+      `, [JSON.stringify(updatedSummary)]);
+    } catch (err) {
+      console.warn('Error saving Power BI config to DB:', err.message);
+    }
+  }
+
+  res.json({
+    success: true,
+    powerbi_iframe: updatedSummary.powerbi_iframe,
+    powerbi_dashboard_enabled: updatedSummary.powerbi_dashboard_enabled,
+    powerbi_title: updatedSummary.powerbi_title,
+    powerbi_height: updatedSummary.powerbi_height
+  });
+});
+
+
+// ----------------------------------------------------
 // 6 Dimensions API Endpoints (Dynamic from DB)
 // ----------------------------------------------------
 async function getDimensionData(dimensionId, dimensionEng, summaryText, historicalData) {
